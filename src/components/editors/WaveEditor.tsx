@@ -40,6 +40,7 @@ const WaveEditor: React.FC<WaveEditorProps> = ({ layer }) => {
             <Slider label={`Wavelength: ${layer.wavelength.toFixed(0)}`} min="10" max="500" step="1" value={layer.wavelength} onChange={(e) => handleUpdate({ wavelength: parseFloat(e.target.value) })} />
             <Slider label={`Amplitude: ${layer.amplitude.toFixed(0)}`} min="0" max="100" step="1" value={layer.amplitude} onChange={(e) => handleUpdate({ amplitude: parseFloat(e.target.value) })} />
             <Slider label={`Y Position: ${layer.y.toFixed(2)}`} min="0" max="1" step="0.01" value={layer.y} onChange={(e) => handleUpdate({ y: parseFloat(e.target.value) })} />
+            <Slider label={`Angle: ${layer.angle}°`} min="0" max="180" step="1" value={layer.angle} onChange={(e) => handleUpdate({ angle: parseInt(e.target.value, 10) })} />
         </div>
     );
 };

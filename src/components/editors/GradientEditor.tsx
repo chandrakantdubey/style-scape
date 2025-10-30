@@ -50,7 +50,7 @@ const GradientEditor: React.FC<GradientEditorProps> = ({ layer }) => {
             {layer.gradientType === 'linear' && (
                 <div>
                     <label className="block text-sm font-medium text-gray-400">Angle: {layer.angle}°</label>
-                    <input type="range" min="0" max="360" value={layer.angle} onChange={(e) => handleUpdate({ angle: parseInt(e.target.value) })} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
+                    <input type="range" min="0" max="360" value={layer.angle} onChange={(e) => handleUpdate({ angle: parseInt(e.target.value, 10) })} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
                 </div>
             )}
             
@@ -63,7 +63,7 @@ const GradientEditor: React.FC<GradientEditorProps> = ({ layer }) => {
                     <div key={stop.id} className="p-2 bg-gray-800 rounded">
                         <HexColorPicker color={stop.color} onChange={(color) => handleStopChange(stop.id, { color })} className="!w-full mb-2" />
                         <div className="flex items-center space-x-2">
-                            <input type="range" min="0" max="100" value={stop.offset} onChange={(e) => handleStopChange(stop.id, { offset: parseInt(e.target.value) })} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
+                            <input type="range" min="0" max="100" value={stop.offset} onChange={(e) => handleStopChange(stop.id, { offset: parseInt(e.target.value, 10) })} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
                             <span className="text-xs w-8 text-right">{stop.offset}%</span>
                             <button onClick={() => removeStop(stop.id)} disabled={layer.stops.length <= 2} className="text-red-500 disabled:opacity-50 disabled:cursor-not-allowed">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>

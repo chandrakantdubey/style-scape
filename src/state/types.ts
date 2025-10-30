@@ -22,7 +22,7 @@ export interface BaseLayer {
 }
 
 export interface GradientStop {
-  id: string;
+  id:string;
   color: string;
   offset: number;
 }
@@ -32,6 +32,9 @@ export interface GradientLayer extends BaseLayer {
   gradientType: 'linear' | 'radial';
   angle: number;
   stops: GradientStop[];
+  cx?: number;
+  cy?: number;
+  r?: number;
 }
 
 export interface BlobLayer extends BaseLayer {
@@ -53,11 +56,12 @@ export interface WaveLayer extends BaseLayer {
   wavelength: number;
   amplitude: number;
   y: number;
+  angle: number;
 }
 
 export interface PatternLayer extends BaseLayer {
   type: LayerType.PATTERN;
-  patternType: 'dots' | 'lines' | 'squares';
+  patternType: 'dots' | 'lines' | 'squares' | 'triangles' | 'hexagons' | 'chevrons' | 'crosses';
   backgroundColor: string;
   foregroundColor: string;
   scale: number;
@@ -82,12 +86,14 @@ export interface AppState {
   selectedLayerId: string | null;
 }
 
-export type PresetCategory = 'Gradients' | 'Decorative' | 'Geometric' | 'Waves' | 'Abstract';
+export type PresetTheme = 'light' | 'dark' | 'colored';
+export type PresetCategory = 'Gradients' | 'Decorative' | 'Geometric' | 'Minimalist' | 'Waves' | 'Abstract' | 'Metallic' | 'Grid';
 
 export interface Preset {
   id: string;
   name: string;
   category: PresetCategory;
+  theme: PresetTheme;
   isNew?: boolean;
   canvas: CanvasState;
   layers: Layer[];

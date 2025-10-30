@@ -1,38 +1,65 @@
-import type { Preset } from '../state/types';
-import { generateGradientPreset, generateBlobPreset, generatePatternPreset, generateWavePreset, generateAbstractPreset } from './generators';
+import type { Preset, PresetCategory, PresetTheme } from "../state/types";
+import {
+  generateGradientPreset,
+  generateBlobPreset,
+  generatePatternPreset,
+  generateWavePreset,
+  generateAbstractPreset,
+  generateMetallicPreset,
+  generateGridPreset,
+  generateMinimalistPreset,
+} from "./generators";
 
-const PRESET_COUNT = {
-    GRADIENTS: 120,
-    DECORATIVE: 110,
-    GEOMETRIC: 90,
-    WAVES: 100,
-    ABSTRACT: 110,
+const PRESETS_PER_THEME = 40;
+
+const CATEGORIES: PresetCategory[] = [
+  "Gradients",
+  "Decorative",
+  "Geometric",
+  "Minimalist",
+  "Waves",
+  "Abstract",
+  "Metallic",
+  "Grid",
+];
+
+const THEMES: PresetTheme[] = ["light", "dark", "colored"];
+
+const generatorMap: Record<
+  PresetCategory,
+  (
+    id: string,
+    name: string,
+    theme: PresetTheme,
+    isNew: boolean,
+    seed: string
+  ) => Preset
+> = {
+  Gradients: generateGradientPreset,
+  Decorative: generateBlobPreset,
+  Geometric: generatePatternPreset,
+  Minimalist: generateMinimalistPreset,
+  Waves: generateWavePreset,
+  Abstract: generateAbstractPreset,
+  Metallic: generateMetallicPreset,
+  Grid: generateGridPreset,
 };
 
-const gradientPresets: Preset[] = Array.from({ length: PRESET_COUNT.GRADIENTS }, (_, i) => 
-    generateGradientPreset(`grad-${i}`, `Gradient Sky ${i + 1}`, i < 10)
-);
+export const presets: Preset[] = CATEGORIES.flatMap((category) => {
+  const generator = generatorMap[category];
+  return THEMES.flatMap((theme) => {
+    return Array.from({ length: PRESETS_PER_THEME }, (_, i) => {
+      // const presetIndex = (catIndex * THEMES.length * PRESETS_PER_THEME) + (themeIndex * PRESETS_PER_THEME) + i;
+      const id = `${category.toLowerCase().replace(" ", "")}-${theme}-${i}`;
+      const name = `${category} ${
+        theme.charAt(0).toUpperCase() + theme.slice(1)
+      } #${i + 1}`;
+      const isNew = i < 5; // Make first 5 of each theme new
 
-const decorativePresets: Preset[] = Array.from({ length: PRESET_COUNT.DECORATIVE }, (_, i) => 
-    generateBlobPreset(`blob-${i}`, `Soft Blob ${i + 1}`, i < 10)
-);
+      // Use the static `id` as the seed for deterministic generation.
+      const seed = id;
 
-const geometricPresets: Preset[] = Array.from({ length: PRESET_COUNT.GEOMETRIC }, (_, i) =>
-    generatePatternPreset(`pattern-${i}`, `Geo Pattern ${i + 1}`, i < 10)
-);
-
-const wavePresets: Preset[] = Array.from({ length: PRESET_COUNT.WAVES }, (_, i) =>
-    generateWavePreset(`wave-${i}`, `Flowing Wave ${i + 1}`, i < 10)
-);
-
-const abstractPresets: Preset[] = Array.from({ length: PRESET_COUNT.ABSTRACT }, (_, i) =>
-    generateAbstractPreset(`abstract-${i}`, `Abstract Shape ${i + 1}`, i < 10)
-);
-
-export const presets: Preset[] = [
-    ...gradientPresets,
-    ...decorativePresets,
-    ...geometricPresets,
-    ...wavePresets,
-    ...abstractPresets,
-];
+      return generator(id, name, theme, isNew, seed);
+    });
+  });
+});

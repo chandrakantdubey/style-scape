@@ -44,7 +44,7 @@ const PatternEditor: React.FC<PatternEditorProps> = ({ layer }) => {
                 </div>
             </div>
             <Slider label={`Scale: ${layer.scale.toFixed(0)}`} min="5" max="100" step="1" value={layer.scale} onChange={(e) => handleUpdate({ scale: parseFloat(e.target.value) })} />
-            <Slider label={`Angle: ${layer.angle}°`} min="0" max="180" value={layer.angle} onChange={(e) => handleUpdate({ angle: parseInt(e.target.value) })} />
+            <Slider label={`Angle: ${layer.angle}°`} min="0" max="180" value={layer.angle} onChange={(e) => handleUpdate({ angle: parseInt(e.target.value, 10) })} />
 
             <div className="grid grid-cols-2 gap-4">
                 <div>

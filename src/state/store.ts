@@ -1,14 +1,7 @@
 import { create } from "zustand";
 import { produce } from "immer";
 // Fix: Correctly import LayerType as a value and other interfaces as types.
-import type {
-  AppState,
-  Layer,
-  GradientLayer,
-  // BlobLayer,
-  // WaveLayer,
-  // PatternLayer,
-} from "./types";
+import type { AppState, Layer, GradientLayer } from "./types";
 import { LayerType } from "./types";
 import { subscribeWithSelector } from "zustand/middleware";
 
@@ -155,6 +148,8 @@ const useStore = create<TemporalState>()(
                 wavelength: 150,
                 amplitude: 20,
                 y: 0.5,
+                // Fix: Add missing 'angle' property required by WaveLayer interface.
+                angle: 0,
               };
               break;
             case LayerType.PATTERN:

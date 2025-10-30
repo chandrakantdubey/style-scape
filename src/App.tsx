@@ -1,19 +1,26 @@
-import React, { useState, useMemo, useEffect, Suspense, lazy } from "react";
+import { useState, useMemo, useEffect, Suspense, lazy, type FC } from "react";
+import Hero from "./components/Hero";
+import { presets } from "./presets";
+import { renderSVG } from "./render/svgRenderer";
+import type { Preset } from "./state/types";
 import { useTheme } from "./hooks/useTheme";
 import { useFavorites } from "./hooks/useFavorites";
-import type { Preset } from "./state/types";
-import { renderSVG } from "./render/svgRenderer";
-import { presets } from "./presets";
-import Hero from "./components/Hero";
+import { getAverageLuminance } from "./utils/colorAnalyzer";
 
 const PatternLibrary = lazy(() => import("./components/PatternLibrary"));
+const CustomizeModal = lazy(() => import("./components/CustomizeModal"));
 
-const App: React.FC = () => {
+const App: FC = () => {
   const [theme, toggleTheme] = useTheme();
   const [favorites, toggleFavorite] = useFavorites();
   const [category, setCategory] = useState("All");
+  const [themeFilter, setThemeFilter] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [backgroundStyle, setBackgroundStyle] = useState({});
+  const [isBgDark, setIsBgDark] = useState(true);
+  const [customizingPreset, setCustomizingPreset] = useState<Preset | null>(
+    null
+  );
 
   const handlePreview = (preset: Preset) => {
     const svgString = renderSVG({
@@ -30,6 +37,17 @@ const App: React.FC = () => {
       backgroundPosition: "center",
       transition: "background-image 0.3s ease-in-out",
     });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+
+    getAverageLuminance(svgString, preset.canvas.width, preset.canvas.height)
+      .then((luminance) => {
+        setIsBgDark(luminance < 128);
+      })
+      .catch(console.error);
   };
 
   useEffect(() => {
@@ -40,17 +58,25 @@ const App: React.FC = () => {
   }, []);
 
   const filteredPresets = useMemo(() => {
-    let initialFilter = presets;
+    let results = presets;
+
+    // Filter by Category
     if (category === "Favourites") {
-      initialFilter = presets.filter((p) => favorites.includes(p.id));
+      results = results.filter((p) => favorites.includes(p.id));
     } else if (category !== "All") {
-      initialFilter = presets.filter((p) => p.category === category);
+      results = results.filter((p) => p.category === category);
     }
 
-    return initialFilter.filter((p) =>
+    // Filter by Theme
+    if (themeFilter !== "All") {
+      results = results.filter((p) => p.theme === themeFilter.toLowerCase());
+    }
+
+    // Filter by Search Term
+    return results.filter((p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [category, searchTerm, favorites]);
+  }, [category, themeFilter, searchTerm, favorites]);
 
   return (
     <>
@@ -60,7 +86,7 @@ const App: React.FC = () => {
         aria-hidden="true"
       />
       <div className="relative min-h-screen">
-        <Hero theme={theme} onToggleTheme={toggleTheme} />
+        <Hero theme={theme} onToggleTheme={toggleTheme} isBgDark={isBgDark} />
         <Suspense
           fallback={
             <div
@@ -75,14 +101,26 @@ const App: React.FC = () => {
             presets={filteredPresets}
             activeCategory={category}
             onCategoryChange={setCategory}
+            activeThemeFilter={themeFilter}
+            onThemeFilterChange={setThemeFilter}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             onPreview={handlePreview}
             favorites={favorites}
             onToggleFavorite={toggleFavorite}
+            onCustomize={setCustomizingPreset}
             hasFavorites={favorites.length > 0}
+            isBgDark={isBgDark}
           />
         </Suspense>
+        {customizingPreset && (
+          <Suspense fallback={<div />}>
+            <CustomizeModal
+              preset={customizingPreset}
+              onClose={() => setCustomizingPreset(null)}
+            />
+          </Suspense>
+        )}
       </div>
     </>
   );

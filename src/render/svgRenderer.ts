@@ -5,7 +5,7 @@ import { generateWavePath } from './waveGenerator';
 import { generatePatternDef } from './patternGenerator';
 
 function renderGradient(layer: GradientLayer): string {
-  const { id, gradientType, angle, stops } = layer;
+  const { id, gradientType, angle, stops, cx, cy, r } = layer;
   const defId = `grad-${id}`;
   
   const stopElements = stops
@@ -14,7 +14,11 @@ function renderGradient(layer: GradientLayer): string {
 
   let gradientElement;
   if (gradientType === 'radial') {
-    gradientElement = `<radialGradient id="${defId}">${stopElements}</radialGradient>`;
+    const attrs = [`id="${defId}"`];
+    if (cx !== undefined) attrs.push(`cx="${cx}%"`);
+    if (cy !== undefined) attrs.push(`cy="${cy}%"`);
+    if (r !== undefined) attrs.push(`r="${r}%"`);
+    gradientElement = `<radialGradient ${attrs.join(' ')}>${stopElements}</radialGradient>`;
   } else {
     gradientElement = `<linearGradient id="${defId}" x1="0%" y1="0%" x2="0%" y2="100%" gradientTransform="rotate(${angle} 0.5 0.5)">${stopElements}</linearGradient>`;
   }
@@ -36,7 +40,7 @@ function renderBlob(layer: BlobLayer, canvas: AppState['canvas']): string {
 function renderWave(layer: WaveLayer, canvas: AppState['canvas']): string {
     const { width } = canvas;
     const height = canvas.height * layer.wavelength;
-    const path = generateWavePath(layer.seed, width, height, layer.points, layer.wavelength, layer.amplitude);
+    const path = generateWavePath(layer.seed, width, height, layer.points, layer.wavelength, layer.amplitude, layer.angle ?? 0);
     const yPos = canvas.height * layer.y - height / 2;
     return `<g transform="translate(0 ${yPos})"><path d="${path}" fill="${layer.color}" /></g>`;
 }
