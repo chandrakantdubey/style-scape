@@ -1,5 +1,5 @@
 import React from "react";
-import type { Preset, PresetCategory } from "../state/types";
+import type { Preset, PresetCategory, PresetTheme } from "../state/types";
 import LazyPatternCard from "./LazyPatternCard";
 import { SearchIcon, StarIcon } from "./Icons";
 
@@ -14,9 +14,11 @@ interface PatternLibraryProps {
   onPreview: (preset: Preset) => void;
   favorites: string[];
   onToggleFavorite: (id: string) => void;
-  onCustomize: (preset: Preset) => void;
   hasFavorites: boolean;
   isBgDark: boolean;
+  onOpenMixer?: () => void;
+  onOpenComparison?: () => void;
+  onOpenBatchExport?: () => void;
 }
 
 const CATEGORIES: (PresetCategory | "All" | "Favourites")[] = [
@@ -29,6 +31,11 @@ const CATEGORIES: (PresetCategory | "All" | "Favourites")[] = [
   "Abstract",
   "Metallic",
   "Grid",
+  "Glassmorphism",
+  "Texture",
+  "Particles",
+  "Mesh",
+  "Stripe",
   "Favourites",
 ];
 const THEME_FILTERS = ["All", "Light", "Dark", "Colored"];
@@ -44,8 +51,10 @@ const PatternLibrary: React.FC<PatternLibraryProps> = ({
   onPreview,
   favorites,
   onToggleFavorite,
-  onCustomize,
   isBgDark,
+  onOpenMixer,
+  onOpenBatchExport,
+  onOpenComparison,
 }) => {
   const titleColor = isBgDark ? "text-gray-100" : "text-gray-900";
   const subtitleColor = isBgDark ? "text-gray-300" : "text-gray-600";
@@ -79,6 +88,68 @@ const PatternLibrary: React.FC<PatternLibraryProps> = ({
           Tap on mobile or hover on desktop to see options.
         </p>
       </div>
+
+      {onOpenMixer && onOpenComparison && onOpenBatchExport && (
+        <div className="flex justify-center gap-2 mb-6">
+          <button
+            onClick={onOpenMixer}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+              />
+            </svg>
+            Mix Patterns
+          </button>
+          <button
+            onClick={onOpenComparison}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+              />
+            </svg>
+            Compare
+          </button>
+          <button
+            onClick={onOpenBatchExport}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              />
+            </svg>
+            Batch Export
+          </button>
+        </div>
+      )}
 
       <div className="mt-12 space-y-4">
         <div className="flex justify-center flex-wrap gap-2">
@@ -155,7 +226,6 @@ const PatternLibrary: React.FC<PatternLibraryProps> = ({
             onPreview={onPreview}
             isFavorite={favorites.includes(preset.id)}
             onToggleFavorite={() => onToggleFavorite(preset.id)}
-            onCustomize={() => onCustomize(preset)}
           />
         ))}
       </div>

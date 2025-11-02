@@ -5,11 +5,11 @@ export interface CanvasState {
 }
 
 export enum LayerType {
-  GRADIENT = 'gradient',
-  BLOB = 'blob',
-  WAVE = 'wave',
-  PATTERN = 'pattern',
-  IMAGE = 'image',
+  GRADIENT = "gradient",
+  BLOB = "blob",
+  WAVE = "wave",
+  PATTERN = "pattern",
+  IMAGE = "image",
 }
 
 export interface BaseLayer {
@@ -22,14 +22,14 @@ export interface BaseLayer {
 }
 
 export interface GradientStop {
-  id:string;
+  id: string;
   color: string;
   offset: number;
 }
 
 export interface GradientLayer extends BaseLayer {
   type: LayerType.GRADIENT;
-  gradientType: 'linear' | 'radial';
+  gradientType: "linear" | "radial";
   angle: number;
   stops: GradientStop[];
   cx?: number;
@@ -61,7 +61,14 @@ export interface WaveLayer extends BaseLayer {
 
 export interface PatternLayer extends BaseLayer {
   type: LayerType.PATTERN;
-  patternType: 'dots' | 'lines' | 'squares' | 'triangles' | 'hexagons' | 'chevrons' | 'crosses';
+  patternType:
+    | "dots"
+    | "lines"
+    | "squares"
+    | "triangles"
+    | "hexagons"
+    | "chevrons"
+    | "crosses";
   backgroundColor: string;
   foregroundColor: string;
   scale: number;
@@ -69,15 +76,20 @@ export interface PatternLayer extends BaseLayer {
 }
 
 export interface ImageLayer extends BaseLayer {
-    type: LayerType.IMAGE;
-    src: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
+  type: LayerType.IMAGE;
+  src: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
-export type Layer = GradientLayer | BlobLayer | WaveLayer | PatternLayer | ImageLayer;
+export type Layer =
+  | GradientLayer
+  | BlobLayer
+  | WaveLayer
+  | PatternLayer
+  | ImageLayer;
 
 // Fix: Define and export the AppState interface.
 export interface AppState {
@@ -86,8 +98,22 @@ export interface AppState {
   selectedLayerId: string | null;
 }
 
-export type PresetTheme = 'light' | 'dark' | 'colored';
-export type PresetCategory = 'Gradients' | 'Decorative' | 'Geometric' | 'Minimalist' | 'Waves' | 'Abstract' | 'Metallic' | 'Grid';
+export type PresetTheme = "light" | "dark" | "colored";
+
+export type PresetCategory =
+  | "Gradients"
+  | "Decorative"
+  | "Geometric"
+  | "Minimalist"
+  | "Waves"
+  | "Abstract"
+  | "Metallic"
+  | "Grid"
+  | "Glassmorphism"
+  | "Texture"
+  | "Particles"
+  | "Mesh"
+  | "Stripe";
 
 export interface Preset {
   id: string;

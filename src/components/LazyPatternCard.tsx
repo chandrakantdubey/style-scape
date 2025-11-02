@@ -5,12 +5,11 @@ import PatternCard from './PatternCard';
 interface LazyPatternCardProps {
     preset: Preset;
     onPreview: (preset: Preset) => void;
-    isFavorite: boolean;
-    onToggleFavorite: () => void;
-    onCustomize: () => void;
+    isFavorite?: boolean;
+    onToggleFavorite?: () => void;
 }
 
-const LazyPatternCard: React.FC<LazyPatternCardProps> = ({ preset, onPreview, isFavorite, onToggleFavorite, onCustomize }) => {
+const LazyPatternCard: React.FC<LazyPatternCardProps> = ({ preset, onPreview, isFavorite, onToggleFavorite }) => {
     const [isVisible, setIsVisible] = useState(false);
     const placeholderRef = useRef<HTMLDivElement>(null);
 
@@ -34,13 +33,19 @@ const LazyPatternCard: React.FC<LazyPatternCardProps> = ({ preset, onPreview, is
 
         return () => {
             if (placeholderRef.current) {
+                // This condition is important for cleanup.
                 observer.unobserve(placeholderRef.current);
             }
         };
     }, []);
 
     if (isVisible) {
-        return <PatternCard preset={preset} onPreview={onPreview} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite} onCustomize={onCustomize} />;
+        return <PatternCard 
+            preset={preset} 
+            onPreview={onPreview}
+            isFavorite={isFavorite}
+            onToggleFavorite={onToggleFavorite}
+        />;
     }
 
     return (
