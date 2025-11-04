@@ -1,0 +1,479 @@
+// pages/HomePage.tsx - COMPLETE VERSION
+import React, { useState, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router";
+import type { Preset } from "../state/types";
+import { renderSVG } from "../render/svgRenderer";
+import { StarIcon, SearchIcon, Logo, GithubIcon } from "../components/Icons";
+
+interface HomePageProps {
+  presets: Preset[];
+  onPreview: (preset: Preset) => void;
+  isBgDark: boolean;
+  favorites: string[];
+  onToggleFavorite: (id: string) => void;
+}
+
+const HomePage: React.FC<HomePageProps> = ({
+  presets,
+  onPreview,
+  isBgDark,
+  favorites,
+  onToggleFavorite,
+}) => {
+  const navigate = useNavigate();
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [activeThemeFilter, setActiveThemeFilter] = useState("All");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+
+  const filteredPresets = useMemo(() => {
+    return presets.filter((p) => {
+      if (activeCategory === "Favourites") {
+        if (!favorites.includes(p.id)) return false;
+      } else if (activeCategory !== "All" && p.category !== activeCategory) {
+        return false;
+      }
+
+      const themeFilterLower = activeThemeFilter.toLowerCase();
+      if (activeThemeFilter !== "All" && p.theme !== themeFilterLower) {
+        return false;
+      }
+
+      if (
+        searchTerm &&
+        !p.name.toLowerCase().includes(searchTerm.toLowerCase())
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [activeCategory, activeThemeFilter, searchTerm, favorites, presets]);
+
+  const categories = [
+    "All",
+    "Gradients",
+    "Decorative",
+    "Geometric",
+    "Minimalist",
+    "Waves",
+    "Abstract",
+    "Metallic",
+    "Grid",
+    "Glassmorphism",
+    "Texture",
+    "Particles",
+    "Mesh",
+    "Favourites",
+  ];
+  const themeFilters = ["All", "Light", "Dark", "Colored"];
+
+  const textColor = isBgDark ? "text-white" : "text-gray-900";
+  const subtitleColor = isBgDark ? "text-gray-300" : "text-gray-600";
+  const bgPanel = isBgDark ? "bg-gray-900/70" : "bg-white/70";
+  const borderColor = isBgDark ? "border-gray-700" : "border-gray-200";
+  const navColor = isBgDark ? "text-white" : "text-gray-800";
+  const accentColor = isBgDark ? "text-indigo-400" : "text-indigo-600";
+
+  const handlePatternClick = useCallback(
+    (preset: Preset) => {
+      onPreview(preset);
+      navigate(`/pattern/${preset.id}`);
+    },
+    [navigate, onPreview]
+  );
+
+  const getSVGDataUrl = useCallback((preset: Preset): string => {
+    const svgString = renderSVG({
+      canvas: preset.canvas,
+      layers: preset.layers,
+      selectedLayerId: null,
+    } as any);
+    return `data:image/svg+xml;base64,${btoa(
+      unescape(encodeURIComponent(svgString))
+    )}`;
+  }, []);
+
+  return (
+    <div className="min-h-screen">
+      {/* Hero Section */}
+      <header className="relative w-full min-h-[85vh] flex items-center justify-center text-center">
+        <div className="absolute top-0 left-0 right-0 p-4 sm:p-6 z-20">
+          <nav className="max-w-7xl mx-auto flex justify-between items-center">
+            <a href="#" className={`flex items-center space-x-2 ${navColor}`}>
+              <Logo />
+              <span className="font-bold text-xl hidden sm:inline">
+                StyleScape
+              </span>
+            </a>
+            <div className="flex items-center space-x-4">
+              <a
+                href="https://github.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${navColor} hover:opacity-80 transition-opacity`}
+              >
+                <GithubIcon />
+              </a>
+            </div>
+          </nav>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <h1
+            className={`text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tighter drop-shadow-lg ${textColor}`}
+          >
+            Instantly Generate
+            <span className={`block ${accentColor}`}>Stunning Backgrounds</span>
+          </h1>
+          <p
+            className={`mt-6 max-w-2xl mx-auto text-lg md:text-xl drop-shadow-md ${subtitleColor}`}
+          >
+            Over {presets.length}+ unique, procedurally generated patterns. Mix,
+            compare, and export with React, Vue, Tailwind, and more.
+          </p>
+
+          <div className="mt-10 flex justify-center gap-4 flex-wrap">
+            <button
+              onClick={() => navigate("/generator")}
+              className="group relative inline-flex items-center gap-2 bg-indigo-600 text-white font-semibold px-8 py-4 rounded-xl shadow-xl hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/50 transition-all transform hover:scale-105 active:scale-95"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
+              </svg>
+              Generate Your Own
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-bold animate-pulse">
+                New
+              </span>
+            </button>
+            <a
+              href="#patterns"
+              className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white font-semibold px-8 py-4 rounded-xl shadow-xl hover:bg-white/30 focus:outline-none focus:ring-4 focus:ring-white/50 transition-all transform hover:scale-105 active:scale-95"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                />
+              </svg>
+              Explore Library
+            </a>
+          </div>
+
+          <div className="mt-6 flex justify-center gap-3 flex-wrap">
+            <button
+              onClick={() => navigate("/mixer")}
+              className="inline-flex items-center gap-2 bg-purple-600/90 backdrop-blur-sm text-white font-medium px-6 py-3 rounded-lg shadow-lg hover:bg-purple-700 transition-all transform hover:scale-105 active:scale-95"
+              title="Mix multiple patterns together"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                />
+              </svg>
+              Pattern Mixer
+            </button>
+            <button
+              onClick={() => navigate("/batch-export")}
+              className="inline-flex items-center gap-2 bg-green-600/90 backdrop-blur-sm text-white font-medium px-6 py-3 rounded-lg shadow-lg hover:bg-green-700 transition-all transform hover:scale-105 active:scale-95"
+              title="Export multiple patterns at once"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              Batch Export
+            </button>
+            <button
+              onClick={() => navigate("/compare")}
+              className="inline-flex items-center gap-2 bg-blue-600/90 backdrop-blur-sm text-white font-medium px-6 py-3 rounded-lg shadow-lg hover:bg-blue-700 transition-all transform hover:scale-105 active:scale-95"
+              title="Compare patterns side by side"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                />
+              </svg>
+              Compare
+            </button>
+          </div>
+
+          {/* Feature Highlights */}
+          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <div
+              className={`backdrop-blur-md bg-white/10 rounded-xl p-6 border border-white/20 ${textColor}`}
+            >
+              <div className="text-3xl mb-3">🎨</div>
+              <h3 className="font-bold text-lg mb-2">
+                {presets.length}+ Patterns
+              </h3>
+              <p className="text-sm opacity-80">
+                Procedurally generated backgrounds in multiple categories and
+                themes
+              </p>
+            </div>
+
+            <div
+              className={`backdrop-blur-md bg-white/10 rounded-xl p-6 border border-white/20 ${textColor}`}
+            >
+              <div className="text-3xl mb-3">⚡</div>
+              <h3 className="font-bold text-lg mb-2">One-Click Export</h3>
+              <p className="text-sm opacity-80">
+                CSS, Tailwind, React, Vue, Svelte, SVG, PNG - we've got you
+                covered
+              </p>
+            </div>
+
+            <div
+              className={`backdrop-blur-md bg-white/10 rounded-xl p-6 border border-white/20 ${textColor}`}
+            >
+              <div className="text-3xl mb-3">🚀</div>
+              <h3 className="font-bold text-lg mb-2">Power Features</h3>
+              <p className="text-sm opacity-80">
+                Mix patterns, batch export, compare side-by-side, and more
+              </p>
+            </div>
+          </div>
+
+          {/* Scroll Indicator */}
+          <div className="mt-12">
+            <a
+              href="#patterns"
+              className="inline-flex flex-col items-center gap-2 opacity-60 hover:opacity-100 transition-opacity"
+            >
+              <span className={`text-sm ${textColor}`}>Scroll to explore</span>
+              <svg
+                className={`w-6 h-6 animate-bounce ${textColor}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </header>
+
+      {/* Pattern Library */}
+      <main
+        id="patterns"
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16"
+      >
+        <div className="text-center mb-12">
+          <h2 className={`text-4xl font-extrabold drop-shadow-lg ${textColor}`}>
+            Pattern Library
+          </h2>
+          <p className={`mt-2 text-lg drop-shadow-md ${subtitleColor}`}>
+            Click any pattern to view details and export options
+          </p>
+        </div>
+
+        <div
+          className={`${bgPanel} backdrop-blur-lg rounded-xl border ${borderColor} p-6 mb-8`}
+        >
+          {/* Search */}
+          <div className="relative mb-4">
+            <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="search"
+              placeholder="Search patterns..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`w-full pl-10 pr-4 py-3 rounded-lg border ${borderColor} ${
+                isBgDark
+                  ? "bg-gray-800 text-white placeholder-gray-500"
+                  : "bg-white text-gray-900 placeholder-gray-400"
+              } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+            />
+          </div>
+
+          {/* Category Filters */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  activeCategory === cat
+                    ? "bg-indigo-600 text-white shadow-lg scale-105"
+                    : isBgDark
+                    ? "bg-gray-800 hover:bg-gray-700 text-gray-300"
+                    : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                }`}
+              >
+                {cat === "Favourites" && (
+                  <StarIcon filled className="w-4 h-4" />
+                )}
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Theme Filters */}
+          <div className="flex flex-wrap gap-2">
+            {themeFilters.map((theme) => (
+              <button
+                key={theme}
+                onClick={() => setActiveThemeFilter(theme)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  activeThemeFilter === theme
+                    ? "bg-gray-700 text-white scale-105"
+                    : isBgDark
+                    ? "bg-gray-800 hover:bg-gray-700 text-gray-400"
+                    : "bg-gray-200 hover:bg-gray-300 text-gray-600"
+                }`}
+              >
+                {theme}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <p className={`text-center text-sm font-medium mb-6 ${subtitleColor}`}>
+          Showing {filteredPresets.length} pattern
+          {filteredPresets.length !== 1 ? "s" : ""}
+        </p>
+
+        {/* Pattern Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {filteredPresets.map((preset) => {
+            const dataUrl = getSVGDataUrl(preset);
+            const isFavorite = favorites.includes(preset.id);
+
+            return (
+              <div
+                key={preset.id}
+                className="aspect-square rounded-xl shadow-lg overflow-hidden relative group cursor-pointer transform transition-transform hover:scale-105"
+                onClick={() => handlePatternClick(preset)}
+              >
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{ backgroundImage: `url("${dataUrl}")` }}
+                />
+
+                {/* Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center p-4">
+                  <div className="text-center">
+                    <h3 className="text-white font-bold text-lg mb-1">
+                      {preset.name}
+                    </h3>
+                    <p className="text-gray-300 text-sm mb-4">
+                      {preset.category} • {preset.theme}
+                    </p>
+                    <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                      View Details
+                    </button>
+                  </div>
+                </div>
+
+                {/* Favorite Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite(preset.id);
+                  }}
+                  className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-sm transition-all z-10 ${
+                    isFavorite
+                      ? "bg-yellow-400/20 text-yellow-400"
+                      : "bg-black/30 text-white/80 hover:text-white hover:bg-black/50"
+                  }`}
+                  aria-label={
+                    isFavorite ? "Remove from favorites" : "Add to favorites"
+                  }
+                >
+                  <StarIcon filled={isFavorite} className="w-5 h-5" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {filteredPresets.length === 0 && (
+          <div
+            className={`${bgPanel} backdrop-blur-lg rounded-xl border ${borderColor} p-12 text-center`}
+          >
+            <svg
+              className="w-16 h-16 mx-auto mb-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <p className={`text-xl font-semibold ${textColor}`}>
+              No patterns found
+            </p>
+            <p className={`mt-2 ${subtitleColor}`}>
+              Try adjusting your filters or search term
+            </p>
+            <button
+              onClick={() => {
+                setActiveCategory("All");
+                setActiveThemeFilter("All");
+                setSearchTerm("");
+              }}
+              className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Reset Filters
+            </button>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default HomePage;
