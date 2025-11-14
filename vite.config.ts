@@ -35,19 +35,6 @@ export default defineConfig({
     minify: "terser",
     cssCodeSplit: true,
     chunkSizeWarningLimit: 800,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          react: ["react", "react-dom"],
-          vendor: ["zustand", "immer", "seedrandom", "react-colorful"],
-          "ui-components": [
-            "./components/PatternMixer",
-            "./components/BatchExport",
-            "./components/ComparisonView",
-          ],
-        },
-      },
-    },
   },
 
   optimizeDeps: {

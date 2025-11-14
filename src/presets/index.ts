@@ -39,7 +39,7 @@ const CATEGORIES: PresetCategory[] = [
 const THEMES: PresetTheme[] = ["light", "dark", "colored"];
 
 const generatorMap: Record<
-  PresetCategory,
+  Exclude<PresetCategory, "Mixed">,
   (
     id: string,
     name: string,
@@ -64,7 +64,7 @@ const generatorMap: Record<
 };
 
 export const presets: Preset[] = CATEGORIES.flatMap((category, _catIndex) => {
-  const generator = generatorMap[category];
+  const generator = generatorMap[category as Exclude<PresetCategory, "Mixed">];
   return THEMES.flatMap((theme, _themeIndex) => {
     return Array.from({ length: PRESETS_PER_THEME }, (_, i) => {
       const id = `${category.toLowerCase().replace(" ", "")}-${theme}-${i}`;

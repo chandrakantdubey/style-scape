@@ -54,7 +54,7 @@ const HomePage: React.FC<HomePageProps> = ({
   // Add Zustand store hook for saving lazy-loaded patterns
   const { addUserCreatedPreset } = useStore();
 
-  const generatorMap: Record<PresetCategory, (id: string, name: string, theme: PresetTheme, isNew: boolean, seed: string, customPalette?: string[][]) => Preset> = {
+  const generatorMap: Record<Exclude<PresetCategory, "Mixed">, (id: string, name: string, theme: PresetTheme, isNew: boolean, seed: string, customPalette?: string[][]) => Preset> = {
     'Gradients': generateGradientPreset,
     'Decorative': generateBlobPreset,
     'Geometric': generatePatternPreset,
@@ -95,7 +95,7 @@ const HomePage: React.FC<HomePageProps> = ({
       const themesToGenerate: PresetTheme[] = ["light", "dark", "colored"];
 
       themesToGenerate.forEach((theme) => {
-        const generator = generatorMap[category as PresetCategory];
+        const generator = generatorMap[category as Exclude<PresetCategory, "Mixed">];
         // Generate 30 patterns per theme (90 total per category)
         for (let i = 0; i < 30; i++) {
           const id = `${category.toLowerCase().replace(" ", "")}-${theme}-${i}`;
@@ -434,7 +434,6 @@ const HomePage: React.FC<HomePageProps> = ({
           <div className="flex flex-wrap justify-center gap-2 mb-4">
             {categories.map((cat) => {
               const isLoading = loadingCategories.has(cat);
-              const isGenerated = generatedCategories.has(cat);
               const isActive = activeCategory === cat;
 
               return (

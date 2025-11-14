@@ -24,7 +24,7 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({
   );
   const [viewMode, setViewMode] = useState<"split" | "grid">("split");
   const [searchTerm, setSearchTerm] = useState("");
-  const [isCopied, copy] = useCopyToClipboard();
+  const [, copy] = useCopyToClipboard();
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   const filteredPresets = useMemo(() => {

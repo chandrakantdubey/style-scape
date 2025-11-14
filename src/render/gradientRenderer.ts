@@ -1,7 +1,7 @@
 // render/gradientRenderer.ts
 import type { GradientLayer, CanvasState } from '../state/types';
 
-export function renderGradientLayer(layer: GradientLayer, canvas: CanvasState): string {
+export function renderGradientLayer(layer: GradientLayer): string {
   if (!layer.visible) return '';
 
   const { id, gradientType, angle, stops, cx, cy, r, opacity, blendMode } = layer;
@@ -32,7 +32,7 @@ export function renderGradientLayer(layer: GradientLayer, canvas: CanvasState): 
 
 export function renderGradientSVG(layer: GradientLayer, canvas: CanvasState): string {
   const { width, height, background } = canvas;
-  const gradientContent = renderGradientLayer(layer, canvas);
+  const gradientContent = renderGradientLayer(layer);
 
   return `
     <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">

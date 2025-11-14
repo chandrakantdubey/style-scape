@@ -10,7 +10,14 @@ import {
     generateMetallicPreset,
     generateGridPreset,
     generateMinimalistPreset,
+    generateGlassPreset,
 } from '../presets/generators';
+import {
+    generateNoisePreset,
+    generateParticlePreset,
+    generateMeshPreset,
+    generateStripedPreset,
+} from '../presets/enhancedGenerators';
 import LazyPatternCard from './LazyPatternCard';
 import { ArrowDownIcon } from './Icons';
 
@@ -20,7 +27,7 @@ interface GeneratorViewProps {
     onBack: () => void;
 }
 
-const generatorMap: Record<PresetCategory, (id:string, name: string, theme: PresetTheme, isNew: boolean, seed: string, customPalette?: string[][]) => Preset> = {
+const generatorMap: Record<Exclude<PresetCategory, "Mixed">, (id:string, name: string, theme: PresetTheme, isNew: boolean, seed: string, customPalette?: string[][]) => Preset> = {
     'Gradients': generateGradientPreset,
     'Decorative': generateBlobPreset,
     'Geometric': generatePatternPreset,
@@ -29,6 +36,11 @@ const generatorMap: Record<PresetCategory, (id:string, name: string, theme: Pres
     'Abstract': generateAbstractPreset,
     'Metallic': generateMetallicPreset,
     'Grid': generateGridPreset,
+    'Glassmorphism': generateGlassPreset,
+    'Texture': generateNoisePreset,
+    'Particles': generateParticlePreset,
+    'Mesh': generateMeshPreset,
+    'Stripe': generateStripedPreset,
 };
 const CATEGORIES = Object.keys(generatorMap) as PresetCategory[];
 const FILTER_CATEGORIES: ('All' | PresetCategory)[] = ['All', ...CATEGORIES];
@@ -82,7 +94,7 @@ const GeneratorView: React.FC<GeneratorViewProps> = ({ onPreview, isBgDark, onBa
 
             CATEGORIES.forEach(category => {
                 themesToGenerate.forEach(theme => {
-                    const generator = generatorMap[category];
+                    const generator = generatorMap[category as keyof typeof generatorMap];
                     for(let i = 0; i < 30; i++) {
                         const seed = `${category}-${theme}-${i}-${Date.now()}-${Math.random()}`;
                         const id = seed;

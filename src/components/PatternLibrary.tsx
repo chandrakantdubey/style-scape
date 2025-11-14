@@ -1,5 +1,5 @@
 import React from "react";
-import type { Preset, PresetCategory, PresetTheme } from "../state/types";
+import type { Preset, PresetCategory } from "../state/types";
 import LazyPatternCard from "./LazyPatternCard";
 import { SearchIcon, StarIcon } from "./Icons";
 

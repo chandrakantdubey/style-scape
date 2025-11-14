@@ -7,7 +7,7 @@ import { renderGradientLayer } from './gradientRenderer';
 import { renderImageLayer } from './imageRenderer';
 
 function renderGradient(layer: GradientLayer): string {
-  return renderGradientLayer(layer, { width: 100, height: 100, background: 'transparent' });
+  return renderGradientLayer(layer);
 }
 
 function renderBlob(layer: BlobLayer, canvas: AppState['canvas']): string {

@@ -1255,7 +1255,6 @@ export const generateGridPreset = (id: string, name: string, theme: PresetTheme,
 
   } else {
     // Organic grid patterns
-    const baseSpacing = random(rng, 40, 70);
     const gridColor1 = gridPalette[Math.floor(rng() * gridPalette.length)];
     const gridColor2 = gridPalette[Math.floor(rng() * gridPalette.length)];
 

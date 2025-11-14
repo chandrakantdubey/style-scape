@@ -31,7 +31,7 @@ interface GeneratorPageProps {
 }
 
 const generatorMap: Record<
-  PresetCategory,
+  Exclude<PresetCategory, "Mixed">,
   (
     id: string,
     name: string,
@@ -124,7 +124,7 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
 
       // Only generate for selected category
       themesToGenerate.forEach((theme) => {
-        const generator = generatorMap[selectedCategory];
+        const generator = generatorMap[selectedCategory as keyof typeof generatorMap];
         // Generate 30 patterns per theme (90 total)
         for (let i = 0; i < 30; i++) {
           // Create stable, predictable ID for routing
