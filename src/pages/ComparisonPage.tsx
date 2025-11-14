@@ -4,6 +4,8 @@ import type { Preset } from "../state/types";
 import { renderSVG } from "../render/svgRenderer";
 import { CopyIcon, CheckIcon } from "../components/Icons";
 
+type SelectionType = "all" | "category" | "theme" | "recent";
+
 interface ComparisonPageProps {
   presets: Preset[];
   onPreview: (preset: Preset) => void;
@@ -22,12 +24,42 @@ const ComparisonPage: React.FC<ComparisonPageProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"split" | "grid">("split");
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [selectionType, setSelectionType] = useState<SelectionType>("all");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedTheme, setSelectedTheme] = useState("all");
 
   const filteredPresets = useMemo(() => {
     return presets
-      .filter((p) => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      .filter((p) => {
+        // Search filter
+        if (!p.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+          return false;
+        }
+
+        // Selection type filter
+        switch (selectionType) {
+          case "category":
+            if (selectedCategory !== "all" && p.category !== selectedCategory) {
+              return false;
+            }
+            break;
+          case "theme":
+            if (selectedTheme !== "all" && p.theme !== selectedTheme) {
+              return false;
+            }
+            break;
+          case "recent":
+            // For now, just show all - could be enhanced to show recently created/used patterns
+            break;
+          case "all":
+          default:
+            break;
+        }
+
+        return true;
+      })
       .slice(0, 20);
-  }, [presets, searchTerm]);
+  }, [presets, searchTerm, selectionType, selectedCategory, selectedTheme]);
 
   const replacePattern = (index: number, newPattern: Preset) => {
     const updated = [...selectedPatterns];
@@ -54,75 +86,85 @@ const ComparisonPage: React.FC<ComparisonPageProps> = ({
   const bgPanel = isBgDark ? "bg-gray-900/80" : "bg-white/80";
   const borderColor = isBgDark ? "border-gray-700" : "border-gray-300";
 
-  const gridCols =
-    selectedPatterns.length === 2
-      ? "grid-cols-2"
-      : selectedPatterns.length === 3
-      ? "grid-cols-3"
-      : "grid-cols-2 md:grid-cols-4";
+  const gridCols = useMemo(() => {
+    if (viewMode === "split") {
+      // Split view: adaptive columns based on number of patterns (2-3-4)
+      return selectedPatterns.length === 2
+        ? "grid-cols-2"
+        : selectedPatterns.length === 3
+        ? "grid-cols-3"
+        : "grid-cols-4";
+    } else {
+      // Grid view: always 2 columns
+      return "grid-cols-2";
+    }
+  }, [viewMode, selectedPatterns.length]);
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className={`${bgPanel} backdrop-blur-lg border-b ${borderColor}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className={`text-3xl font-bold ${textColor}`}>
-                Pattern Comparison
-              </h1>
-              <p
-                className={`text-sm mt-1 ${
-                  isBgDark ? "text-gray-400" : "text-gray-600"
-                }`}
-              >
-                Compare up to 4 patterns side by side
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              {/* View Mode Toggle */}
-              <div className="flex bg-gray-800 dark:bg-gray-700 rounded-lg p-1">
-                <button
-                  onClick={() => setViewMode("split")}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    viewMode === "split"
-                      ? "bg-indigo-600 text-white"
-                      : "text-gray-400 hover:text-white"
+    <div className="h-screen flex">
+      {/* Comparison Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <header className={`${bgPanel} backdrop-blur-lg border-b ${borderColor} flex-shrink-0`}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className={`text-3xl font-bold ${textColor}`}>
+                  Pattern Comparison
+                </h1>
+                <p
+                  className={`text-sm mt-1 ${
+                    isBgDark ? "text-gray-400" : "text-gray-600"
                   }`}
                 >
-                  Split
-                </button>
+                  {viewMode === "split"
+                    ? "Compare patterns in adaptive grid view"
+                    : "Compare patterns in 2-column grid view"
+                  }
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {/* View Mode Toggle */}
+                <div className="flex bg-gray-800 dark:bg-gray-700 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode("split")}
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      viewMode === "split"
+                        ? "bg-indigo-600 text-white"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Split
+                  </button>
+                  <button
+                    onClick={() => setViewMode("grid")}
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      viewMode === "grid"
+                        ? "bg-indigo-600 text-white"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Grid
+                  </button>
+                </div>
+
                 <button
-                  onClick={() => setViewMode("grid")}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    viewMode === "grid"
-                      ? "bg-indigo-600 text-white"
-                      : "text-gray-400 hover:text-white"
+                  onClick={() => navigate("/")}
+                  className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
+                    isBgDark
+                      ? "bg-gray-800 hover:bg-gray-700 text-white"
+                      : "bg-gray-200 hover:bg-gray-300 text-gray-900"
                   }`}
                 >
-                  Grid
+                  ← Back
                 </button>
               </div>
-
-              <button
-                onClick={() => navigate("/")}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  isBgDark
-                    ? "bg-gray-800 hover:bg-gray-700 text-white"
-                    : "bg-gray-200 hover:bg-gray-300 text-gray-900"
-                }`}
-              >
-                ← Back
-              </button>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content */}
-      <div className="flex-1 flex">
-        {/* Comparison Area */}
-        <div className="flex-1 p-6">
+        {/* Main Comparison Content */}
+        <div className="flex-1 p-6 overflow-hidden">
           <div className={`h-full grid ${gridCols} gap-4`}>
             {selectedPatterns.map((pattern, index) => {
               const svgString = renderSVG({
@@ -203,16 +245,78 @@ const ComparisonPage: React.FC<ComparisonPageProps> = ({
             })}
           </div>
         </div>
+      </div>
 
-        {/* Pattern Selection Sidebar */}
-        <div
-          className={`w-80 ${bgPanel} backdrop-blur-lg border-l ${borderColor} overflow-auto flex-shrink-0`}
-        >
+      {/* Pattern Selection Sidebar - Full Height */}
+      <div
+        className={`w-80 ${bgPanel} backdrop-blur-lg border-l ${borderColor} flex flex-col`}
+      >
+        <div className="flex-1 overflow-auto">
           <div className="p-4 space-y-4">
             <div>
               <h3 className={`text-lg font-semibold ${textColor} mb-3`}>
                 Select Patterns
               </h3>
+
+              {/* Selection Type Dropdown */}
+              <div className="mb-3">
+                <label className={`block text-sm font-medium mb-1 ${textColor}`}>
+                  Filter by Type
+                </label>
+                <select
+                  value={selectionType}
+                  onChange={(e) => setSelectionType(e.target.value as SelectionType)}
+                  className={`w-full px-3 py-2 rounded-lg border ${borderColor} ${
+                    isBgDark ? "bg-gray-800 text-white" : "bg-white text-gray-900"
+                  } text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                >
+                  <option value="all">All Patterns</option>
+                  <option value="category">By Category</option>
+                  <option value="theme">By Theme</option>
+                  <option value="recent">Recently Created</option>
+                </select>
+              </div>
+
+              {/* Category/Theme Filter when applicable */}
+              {selectionType === "category" && (
+                <div className="mb-3">
+                  <label className={`block text-sm font-medium mb-1 ${textColor}`}>
+                    Category
+                  </label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-lg border ${borderColor} ${
+                      isBgDark ? "bg-gray-800 text-white" : "bg-white text-gray-900"
+                    } text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                  >
+                    <option value="all">All Categories</option>
+                    {Array.from(new Set(presets.map(p => p.category))).map(category => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {selectionType === "theme" && (
+                <div className="mb-3">
+                  <label className={`block text-sm font-medium mb-1 ${textColor}`}>
+                    Theme
+                  </label>
+                  <select
+                    value={selectedTheme}
+                    onChange={(e) => setSelectedTheme(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-lg border ${borderColor} ${
+                      isBgDark ? "bg-gray-800 text-white" : "bg-white text-gray-900"
+                    } text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                  >
+                    <option value="all">All Themes</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                    <option value="colored">Colored</option>
+                  </select>
+                </div>
+              )}
 
               {/* Search */}
               <input
@@ -222,7 +326,7 @@ const ComparisonPage: React.FC<ComparisonPageProps> = ({
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className={`w-full px-3 py-2 rounded-lg border ${borderColor} ${
                   isBgDark ? "bg-gray-800 text-white" : "bg-white text-gray-900"
-                } text-sm`}
+                } text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500`}
               />
             </div>
 
@@ -264,13 +368,13 @@ const ComparisonPage: React.FC<ComparisonPageProps> = ({
             </div>
 
             {/* Available Patterns */}
-            <div>
+            <div className="flex-1">
               <h4
                 className={`text-sm font-medium ${
                   isBgDark ? "text-gray-400" : "text-gray-600"
                 } mb-2`}
               >
-                Available Patterns
+                Available Patterns ({filteredPresets.length})
               </h4>
               <div className="grid grid-cols-2 gap-2">
                 {filteredPresets.map((preset) => {

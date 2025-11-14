@@ -18,8 +18,12 @@ import {
   generateNoisePreset,
   generateParticlePreset,
   generateMeshPreset,
+  generateStripedPreset,
 } from "../presets/enhancedGenerators";
 import { renderSVG } from "../render/svgRenderer";
+
+// Add Zustand store import
+import useStore from "../state/store";
 
 interface GeneratorPageProps {
   onPreview: (preset: Preset) => void;
@@ -49,6 +53,7 @@ const generatorMap: Record<
   Texture: generateNoisePreset,
   Particles: generateParticlePreset,
   Mesh: generateMeshPreset,
+  Stripe: generateStripedPreset,
 };
 
 const CATEGORIES = Object.keys(generatorMap) as PresetCategory[];
@@ -66,6 +71,10 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
   ]);
   const [generatedPatterns, setGeneratedPatterns] = useState<Preset[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<PresetCategory>("Gradients");
+
+  // Add Zustand store hook
+  const { addUserCreatedPreset } = useStore();
 
   // State for filtering results
   const [activeCategory, setActiveCategory] = useState<string>("All");
@@ -113,24 +122,27 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
       const newPatterns: Preset[] = [];
       const themesToGenerate: PresetTheme[] = ["dark", "light"];
 
-      CATEGORIES.forEach((category) => {
-        themesToGenerate.forEach((theme) => {
-          const generator = generatorMap[category];
-          for (let i = 0; i < 30; i++) {
-            const seed = `${category}-${theme}-${i}-${Date.now()}-${Math.random()}`;
-            const id = seed;
-            const name = `${category} ${theme} #${i + 1}`;
-            const preset = generator(
-              id,
-              name,
-              theme,
-              false,
-              seed,
-              customPalette
-            );
-            newPatterns.push(preset);
-          }
-        });
+      // Only generate for selected category
+      themesToGenerate.forEach((theme) => {
+        const generator = generatorMap[selectedCategory];
+        // Generate 30 patterns per theme (90 total)
+        for (let i = 0; i < 30; i++) {
+          // Create stable, predictable ID for routing
+          const id = `user-generated-${selectedCategory.toLowerCase()}-${theme}-${i}`;
+          const seed = id; // Use stable seed based on ID
+          const name = `Generated ${selectedCategory} ${theme} #${i + 1}`;
+          const preset = generator(
+            id,
+            name,
+            theme,
+            false,
+            seed,
+            customPalette
+          );
+          newPatterns.push(preset);
+          // Save each generated pattern to user store
+          addUserCreatedPreset(preset);
+        }
       });
 
       // Shuffle patterns
@@ -145,7 +157,7 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
         onPreview(newPatterns[0]);
       }
     }, 100);
-  }, [colors, onPreview]);
+  }, [colors, selectedCategory, onPreview]);
 
   const filteredPatterns = generatedPatterns.filter((p) => {
     if (activeCategory !== "All" && p.category !== activeCategory) {
@@ -265,6 +277,30 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
                 Add 2-5 colors to create your custom palette. The generator will
                 use these colors to create patterns.
               </p>
+
+              {/* Category Selector */}
+              <div className="mt-6">
+                <h4 className={`text-md font-semibold mb-3 ${textColor}`}>
+                  Select Pattern Type
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                  {CATEGORIES.map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => setSelectedCategory(category)}
+                      className={`px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                        selectedCategory === category
+                          ? "bg-indigo-600 text-white shadow-lg scale-105"
+                          : isBgDark
+                          ? "bg-gray-800 hover:bg-gray-700 text-gray-200"
+                          : "bg-white hover:bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="flex flex-col space-y-4">
@@ -297,7 +333,7 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
                     Generating...
                   </span>
                 ) : (
-                  `Generate ${CATEGORIES.length * 2 * 30} Patterns`
+                  `Generate 90 ${selectedCategory} Patterns`
                 )}
               </button>
               <div
@@ -305,7 +341,7 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
                   isBgDark ? "text-gray-400" : "text-gray-600"
                 }`}
               >
-                This will generate patterns in all categories using your colors
+                Generate 90 custom {selectedCategory.toLowerCase()} patterns using your color palette
               </div>
             </div>
           </div>

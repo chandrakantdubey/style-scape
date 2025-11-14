@@ -1,5 +1,5 @@
 // App.tsx - React Router Version
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import { renderSVG } from "./render/svgRenderer";
 import { getAverageLuminance } from "./utils/colorAnalyzer";
@@ -12,6 +12,9 @@ import {
   commonShortcuts,
 } from "./hooks/useKeyboardShortcuts";
 
+// Zustand store
+import useStore from "./state/store";
+
 // Pages
 import HomePage from "./pages/HomePage";
 import GeneratorPage from "./pages/GeneratorPage";
@@ -20,14 +23,24 @@ import BatchExportPage from "./pages/BatchExportPage";
 import ComparisonPage from "./pages/ComparisonPage";
 import PatternDetailPage from "./pages/PatternDetailPage";
 
+// Components
+import HelpWidget from "./components/HelpWidget";
+
 const App: React.FC = () => {
   const [backgroundStyle, setBackgroundStyle] = useState({});
   const [isBgDark, setIsBgDark] = useState(true);
-  const [currentPreset, setCurrentPreset] = useState<Preset | null>(null);
+  const [_currentPreset, setCurrentPreset] = useState<Preset | null>(null);
   const [favorites, toggleFavorite] = useFavorites();
-  const [mixedPresets, setMixedPresets] = useState<Preset[]>([]);
 
-  const allPresets = [...presets, ...mixedPresets];
+  // Use Zustand store for user-created presets
+  const { addUserCreatedPreset, getUserCreatedPresets } = useStore();
+  const [userCreatedPresets, setUserCreatedPresets] = useState<Preset[]>(() => getUserCreatedPresets());
+
+  // Make allPresets reactive to userCreatedPresets changes
+  const allPresets = useMemo(() => [...presets, ...userCreatedPresets], [userCreatedPresets]);
+
+  // Track current background pattern index for keyboard navigation
+  const [currentBgIndex, setCurrentBgIndex] = useState(0);
 
   const handlePreview = (preset: Preset) => {
     const svgString = renderSVG({
@@ -48,13 +61,35 @@ const App: React.FC = () => {
 
     setCurrentPreset(preset);
 
+    // Update current background index
+    const presetIndex = allPresets.findIndex(p => p.id === preset.id);
+    if (presetIndex !== -1) {
+      setCurrentBgIndex(presetIndex);
+    }
+
     getAverageLuminance(svgString, preset.canvas.width, preset.canvas.height)
       .then((luminance) => setIsBgDark(luminance < 128))
       .catch(console.error);
   };
 
+  // Handlers for cycling through background patterns
+  const cycleBackgroundNext = () => {
+    if (allPresets.length === 0) return;
+    const nextIndex = (currentBgIndex + 1) % allPresets.length;
+    setCurrentBgIndex(nextIndex);
+    handlePreview(allPresets[nextIndex]);
+  };
+
+  const cycleBackgroundPrev = () => {
+    if (allPresets.length === 0) return;
+    const prevIndex = currentBgIndex === 0 ? allPresets.length - 1 : currentBgIndex - 1;
+    setCurrentBgIndex(prevIndex);
+    handlePreview(allPresets[prevIndex]);
+  };
+
   const handleCreateMixed = (mixedPreset: Preset) => {
-    setMixedPresets((prev) => [...prev, mixedPreset]);
+    addUserCreatedPreset(mixedPreset);
+    setUserCreatedPresets(prev => [...prev, mixedPreset]);
     handlePreview(mixedPreset);
   };
 
@@ -98,6 +133,16 @@ const App: React.FC = () => {
       ) as HTMLInputElement;
       searchInput?.focus();
     }),
+    commonShortcuts.help(() => {
+      // Dispatch a custom event to open the help modal
+      const event = new KeyboardEvent("keydown", {
+        key: "?",
+        shiftKey: true,
+      });
+      window.dispatchEvent(event);
+    }),
+    commonShortcuts.arrowLeft(cycleBackgroundPrev),
+    commonShortcuts.arrowRight(cycleBackgroundNext),
   ]);
 
   return (
@@ -116,7 +161,8 @@ const App: React.FC = () => {
             path="/"
             element={
               <HomePage
-                presets={allPresets}
+                presets={presets}
+                userCreatedPresets={userCreatedPresets}
                 onPreview={handlePreview}
                 isBgDark={isBgDark}
                 favorites={favorites}
@@ -175,6 +221,9 @@ const App: React.FC = () => {
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+
+        {/* Help Widget */}
+        <HelpWidget isBgDark={isBgDark} />
       </div>
     </BrowserRouter>
   );

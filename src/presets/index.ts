@@ -63,14 +63,10 @@ const generatorMap: Record<
   Stripe: generateStripedPreset,
 };
 
-export const presets: Preset[] = CATEGORIES.flatMap((category, catIndex) => {
+export const presets: Preset[] = CATEGORIES.flatMap((category, _catIndex) => {
   const generator = generatorMap[category];
-  return THEMES.flatMap((theme, themeIndex) => {
+  return THEMES.flatMap((theme, _themeIndex) => {
     return Array.from({ length: PRESETS_PER_THEME }, (_, i) => {
-      const presetIndex =
-        catIndex * THEMES.length * PRESETS_PER_THEME +
-        themeIndex * PRESETS_PER_THEME +
-        i;
       const id = `${category.toLowerCase().replace(" ", "")}-${theme}-${i}`;
       const name = `${category} ${
         theme.charAt(0).toUpperCase() + theme.slice(1)

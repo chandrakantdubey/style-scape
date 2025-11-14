@@ -1,12 +1,35 @@
-// pages/HomePage.tsx - COMPLETE VERSION
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, Suspense } from "react";
 import { useNavigate } from "react-router";
-import type { Preset } from "../state/types";
+import type { Preset, PresetCategory, PresetTheme } from "../state/types";
 import { renderSVG } from "../render/svgRenderer";
 import { StarIcon, SearchIcon, Logo, GithubIcon } from "../components/Icons";
 
+// Import generators for lazy loading
+import {
+  generateGradientPreset,
+  generateBlobPreset,
+  generatePatternPreset,
+  generateWavePreset,
+  generateAbstractPreset,
+  generateMetallicPreset,
+  generateGridPreset,
+  generateMinimalistPreset,
+  generateGlassPreset,
+} from "../presets/generators";
+
+import {
+  generateNoisePreset,
+  generateParticlePreset,
+  generateMeshPreset,
+  generateStripedPreset,
+} from "../presets/enhancedGenerators";
+
+// Add Zustand store import for saving lazy-loaded patterns
+import useStore from "../state/store";
+
 interface HomePageProps {
   presets: Preset[];
+  userCreatedPresets: Preset[];
   onPreview: (preset: Preset) => void;
   isBgDark: boolean;
   favorites: string[];
@@ -15,22 +38,94 @@ interface HomePageProps {
 
 const HomePage: React.FC<HomePageProps> = ({
   presets,
+  userCreatedPresets,
   onPreview,
   isBgDark,
   favorites,
   onToggleFavorite,
 }) => {
   const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = useState("All");
+  const [activeCategory, setActiveCategory] = useState("Gradients");
   const [activeThemeFilter, setActiveThemeFilter] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
-  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+  const [loadingCategories, setLoadingCategories] = useState<Set<string>>(new Set());
+  const [generatedCategories, setGeneratedCategories] = useState<Set<string>>(new Set());
+
+  // Add Zustand store hook for saving lazy-loaded patterns
+  const { addUserCreatedPreset } = useStore();
+
+  const generatorMap: Record<PresetCategory, (id: string, name: string, theme: PresetTheme, isNew: boolean, seed: string, customPalette?: string[][]) => Preset> = {
+    'Gradients': generateGradientPreset,
+    'Decorative': generateBlobPreset,
+    'Geometric': generatePatternPreset,
+    'Minimalist': generateMinimalistPreset,
+    'Waves': generateWavePreset,
+    'Abstract': generateAbstractPreset,
+    'Metallic': generateMetallicPreset,
+    'Grid': generateGridPreset,
+    'Glassmorphism': generateGlassPreset,
+    'Texture': generateNoisePreset,
+    'Particles': generateParticlePreset,
+    'Mesh': generateMeshPreset,
+    'Stripe': generateStripedPreset,
+  };
+
+  const allPresets = [...presets, ...userCreatedPresets];
+
+  // Lazy loading function
+  const handleCategoryClick = useCallback((category: string) => {
+    setActiveCategory(category);
+
+    // Skip lazy loading for special categories
+    if (category === "Favourites" || category === "User Created") {
+      return;
+    }
+
+    // Check if category is already generated
+    if (generatedCategories.has(category)) {
+      return;
+    }
+
+    // Start loading
+    setLoadingCategories(prev => new Set(prev).add(category));
+
+    // Generate patterns for this category
+    setTimeout(() => {
+      const newPatterns: Preset[] = [];
+      const themesToGenerate: PresetTheme[] = ["light", "dark", "colored"];
+
+      themesToGenerate.forEach((theme) => {
+        const generator = generatorMap[category as PresetCategory];
+        // Generate 30 patterns per theme (90 total per category)
+        for (let i = 0; i < 30; i++) {
+          const id = `${category.toLowerCase().replace(" ", "")}-${theme}-${i}`;
+          const name = `${category} ${theme.charAt(0).toUpperCase() + theme.slice(1)} #${i + 1}`;
+          const seed = id;
+          const preset = generator(id, name, theme, false, seed);
+          newPatterns.push(preset);
+          // Save to user store for persistence
+          addUserCreatedPreset(preset);
+        }
+      });
+
+      // Mark category as generated
+      setGeneratedCategories(prev => new Set(prev).add(category));
+      setLoadingCategories(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(category);
+        return newSet;
+      });
+    }, 100);
+  }, [generatedCategories, generatorMap, addUserCreatedPreset]);
 
   const filteredPresets = useMemo(() => {
-    return presets.filter((p) => {
+    return allPresets.filter((p) => {
       if (activeCategory === "Favourites") {
         if (!favorites.includes(p.id)) return false;
-      } else if (activeCategory !== "All" && p.category !== activeCategory) {
+      } else if (activeCategory === "User Created") {
+        // Check if this preset is in the user-created list
+        return userCreatedPresets.some(ucp => ucp.id === p.id);
+      } else if (p.category !== activeCategory) {
         return false;
       }
 
@@ -48,10 +143,9 @@ const HomePage: React.FC<HomePageProps> = ({
 
       return true;
     });
-  }, [activeCategory, activeThemeFilter, searchTerm, favorites, presets]);
+  }, [activeCategory, activeThemeFilter, searchTerm, favorites, presets, userCreatedPresets]);
 
   const categories = [
-    "All",
     "Gradients",
     "Decorative",
     "Geometric",
@@ -64,7 +158,9 @@ const HomePage: React.FC<HomePageProps> = ({
     "Texture",
     "Particles",
     "Mesh",
+    "Stripe",
     "Favourites",
+    "User Created",
   ];
   const themeFilters = ["All", "Light", "Dark", "Colored"];
 
@@ -247,7 +343,7 @@ const HomePage: React.FC<HomePageProps> = ({
             >
               <div className="text-3xl mb-3">🎨</div>
               <h3 className="font-bold text-lg mb-2">
-                {presets.length}+ Patterns
+                {allPresets.length}+ Patterns
               </h3>
               <p className="text-sm opacity-80">
                 Procedurally generated backgrounds in multiple categories and
@@ -316,11 +412,10 @@ const HomePage: React.FC<HomePageProps> = ({
           </p>
         </div>
 
-        <div
-          className={`${bgPanel} backdrop-blur-lg rounded-xl border ${borderColor} p-6 mb-8`}
-        >
+        {/* Filters and Search - Centered, no background box */}
+        <div className="text-center mb-8">
           {/* Search */}
-          <div className="relative mb-4">
+          <div className="relative mb-6 max-w-md mx-auto">
             <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="search"
@@ -329,36 +424,49 @@ const HomePage: React.FC<HomePageProps> = ({
               onChange={(e) => setSearchTerm(e.target.value)}
               className={`w-full pl-10 pr-4 py-3 rounded-lg border ${borderColor} ${
                 isBgDark
-                  ? "bg-gray-800 text-white placeholder-gray-500"
-                  : "bg-white text-gray-900 placeholder-gray-400"
+                  ? "bg-gray-800/50 backdrop-blur-sm text-white placeholder-gray-500"
+                  : "bg-white/50 backdrop-blur-sm text-gray-900 placeholder-gray-400"
               } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
             />
           </div>
 
           {/* Category Filters */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  activeCategory === cat
-                    ? "bg-indigo-600 text-white shadow-lg scale-105"
-                    : isBgDark
-                    ? "bg-gray-800 hover:bg-gray-700 text-gray-300"
-                    : "bg-gray-200 hover:bg-gray-300 text-gray-700"
-                }`}
-              >
-                {cat === "Favourites" && (
-                  <StarIcon filled className="w-4 h-4" />
-                )}
-                {cat}
-              </button>
-            ))}
+          <div className="flex flex-wrap justify-center gap-2 mb-4">
+            {categories.map((cat) => {
+              const isLoading = loadingCategories.has(cat);
+              const isGenerated = generatedCategories.has(cat);
+              const isActive = activeCategory === cat;
+
+              return (
+                <button
+                  key={cat}
+                  onClick={() => handleCategoryClick(cat)}
+                  disabled={isLoading}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    isActive
+                      ? "bg-indigo-600 text-white shadow-lg scale-105"
+                      : isBgDark
+                      ? "bg-gray-800/50 backdrop-blur-sm hover:bg-gray-700/50 text-gray-300"
+                      : "bg-white/50 backdrop-blur-sm hover:bg-gray-100/50 text-gray-700"
+                  } ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
+                >
+                  {cat === "Favourites" && (
+                    <StarIcon filled className="w-4 h-4" />
+                  )}
+                  {cat}
+                  {isLoading && (
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Theme Filters */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
             {themeFilters.map((theme) => (
               <button
                 key={theme}
@@ -367,8 +475,8 @@ const HomePage: React.FC<HomePageProps> = ({
                   activeThemeFilter === theme
                     ? "bg-gray-700 text-white scale-105"
                     : isBgDark
-                    ? "bg-gray-800 hover:bg-gray-700 text-gray-400"
-                    : "bg-gray-200 hover:bg-gray-300 text-gray-600"
+                    ? "bg-gray-800/50 backdrop-blur-sm hover:bg-gray-700/50 text-gray-400"
+                    : "bg-white/50 backdrop-blur-sm hover:bg-gray-100/50 text-gray-600"
                 }`}
               >
                 {theme}
@@ -383,58 +491,72 @@ const HomePage: React.FC<HomePageProps> = ({
         </p>
 
         {/* Pattern Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredPresets.map((preset) => {
-            const dataUrl = getSVGDataUrl(preset);
-            const isFavorite = favorites.includes(preset.id);
+        <Suspense fallback={
+          <div className="text-center py-12">
+            <div className="inline-block">
+              <svg className="animate-spin h-12 w-12 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            <p className={`mt-4 text-lg font-semibold ${textColor}`}>
+              Generating patterns...
+            </p>
+          </div>
+        }>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filteredPresets.map((preset) => {
+              const dataUrl = getSVGDataUrl(preset);
+              const isFavorite = favorites.includes(preset.id);
 
-            return (
-              <div
-                key={preset.id}
-                className="aspect-square rounded-xl shadow-lg overflow-hidden relative group cursor-pointer transform transition-transform hover:scale-105"
-                onClick={() => handlePatternClick(preset)}
-              >
+              return (
                 <div
-                  className="absolute inset-0 bg-cover bg-center"
-                  style={{ backgroundImage: `url("${dataUrl}")` }}
-                />
-
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center p-4">
-                  <div className="text-center">
-                    <h3 className="text-white font-bold text-lg mb-1">
-                      {preset.name}
-                    </h3>
-                    <p className="text-gray-300 text-sm mb-4">
-                      {preset.category} • {preset.theme}
-                    </p>
-                    <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-                      View Details
-                    </button>
-                  </div>
-                </div>
-
-                {/* Favorite Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleFavorite(preset.id);
-                  }}
-                  className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-sm transition-all z-10 ${
-                    isFavorite
-                      ? "bg-yellow-400/20 text-yellow-400"
-                      : "bg-black/30 text-white/80 hover:text-white hover:bg-black/50"
-                  }`}
-                  aria-label={
-                    isFavorite ? "Remove from favorites" : "Add to favorites"
-                  }
+                  key={preset.id}
+                  className="aspect-square rounded-xl shadow-lg overflow-hidden relative group cursor-pointer transform transition-transform hover:scale-105"
+                  onClick={() => handlePatternClick(preset)}
                 >
-                  <StarIcon filled={isFavorite} className="w-5 h-5" />
-                </button>
-              </div>
-            );
-          })}
-        </div>
+                  <div
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{ backgroundImage: `url("${dataUrl}")` }}
+                  />
+
+                  {/* Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center p-4">
+                    <div className="text-center">
+                      <h3 className="text-white font-bold text-lg mb-1">
+                        {preset.name}
+                      </h3>
+                      <p className="text-gray-300 text-sm mb-4">
+                        {preset.category} • {preset.theme}
+                      </p>
+                      <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                        View Details
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Favorite Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleFavorite(preset.id);
+                    }}
+                    className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-sm transition-all z-10 ${
+                      isFavorite
+                        ? "bg-yellow-400/20 text-yellow-400"
+                        : "bg-black/30 text-white/80 hover:text-white hover:bg-black/50"
+                    }`}
+                    aria-label={
+                      isFavorite ? "Remove from favorites" : "Add to favorites"
+                    }
+                  >
+                    <StarIcon filled={isFavorite} className="w-5 h-5" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </Suspense>
 
         {filteredPresets.length === 0 && (
           <div
@@ -461,7 +583,7 @@ const HomePage: React.FC<HomePageProps> = ({
             </p>
             <button
               onClick={() => {
-                setActiveCategory("All");
+                setActiveCategory("Gradients");
                 setActiveThemeFilter("All");
                 setSearchTerm("");
               }}

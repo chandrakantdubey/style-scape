@@ -39,7 +39,7 @@ const Hero: React.FC<HeroProps> = ({
           </a>
           <div className="flex items-center space-x-4">
             <a
-              href="https://github.com/google/aistudio-web"
+              href="https://github.com/chandrakantdubey/style-scape.git"
               target="_blank"
               rel="noopener noreferrer"
               className={navIconColor}

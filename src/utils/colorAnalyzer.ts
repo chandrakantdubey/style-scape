@@ -40,12 +40,12 @@ export const getAverageLuminance = (
 
         const avgLuminance = totalLuminance / (sampleWidth * sampleHeight);
         resolve(avgLuminance);
-      } catch (e) {
+      } catch {
         reject(new Error('Could not get image data for luminance calculation.'));
       }
     };
 
-    img.onerror = (e) => {
+    img.onerror = () => {
       URL.revokeObjectURL(url);
       reject(new Error('Failed to load SVG image for color analysis.'));
     };

@@ -1,11 +1,12 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 // Fix: Correctly import LayerType as a value and other interfaces as types.
-import type { AppState, Layer, GradientLayer, BlobLayer, WaveLayer, PatternLayer } from './types';
+import type { AppState, Layer, GradientLayer } from './types';
 import { LayerType } from './types';
 import { subscribeWithSelector } from 'zustand/middleware';
 
 const LOCAL_STORAGE_KEY = 'bggen_v1';
+const USER_PRESETS_KEY = 'user_created_presets';
 
 interface TemporalState {
   past: AppState[];
@@ -19,6 +20,8 @@ interface TemporalState {
   selectLayer: (id: string | null) => void;
   reorderLayer: (id: string, direction: 'up' | 'down') => void;
   updateState: (newState: Partial<AppState>) => void;
+  addUserCreatedPreset: (preset: any) => void; // Add method for user-created presets
+  getUserCreatedPresets: () => any[]; // Get user-created presets
 }
 
 const getInitialState = (): AppState => {
@@ -55,8 +58,27 @@ const getInitialState = (): AppState => {
 };
 
 const useStore = create<TemporalState>()(
-  subscribeWithSelector((set, get) => {
+  subscribeWithSelector((set, _get) => {
     
+    // Get user created presets from localStorage
+    const getUserCreatedPresets = (): any[] => {
+      try {
+        const item = window.localStorage.getItem(USER_PRESETS_KEY);
+        return item ? JSON.parse(item) : [];
+      } catch (error) {
+        console.error("Error reading user presets from localStorage", error);
+        return [];
+      }
+    };
+
+    const setUserCreatedPresets = (presets: any[]) => {
+      try {
+        window.localStorage.setItem(USER_PRESETS_KEY, JSON.stringify(presets));
+      } catch (error) {
+        console.error("Error saving user presets to localStorage", error);
+      }
+    };
+
     const setStateWithHistory = (fn: (state: AppState) => AppState) => {
       set(produce<TemporalState>(draft => {
           const newPresent = fn(draft.present);
@@ -171,6 +193,12 @@ const useStore = create<TemporalState>()(
       updateState: (newState: Partial<AppState>) => {
           setStateWithHistory(state => ({ ...state, ...newState }));
       },
+      addUserCreatedPreset: (preset: any) => {
+        const currentPresets = getUserCreatedPresets();
+        const updatedPresets = [...currentPresets, preset];
+        setUserCreatedPresets(updatedPresets);
+      },
+      getUserCreatedPresets: () => getUserCreatedPresets(),
     };
   })
 );

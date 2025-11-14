@@ -18,7 +18,8 @@ export const generateNoisePreset = (
   name: string,
   theme: PresetTheme,
   isNew: boolean,
-  seed: string
+  seed: string,
+  _customPalette?: string[][]
 ): Preset => {
   const rng = seedrandom(seed);
   const size = 500;
@@ -123,7 +124,8 @@ export const generateParticlePreset = (
   name: string,
   theme: PresetTheme,
   isNew: boolean,
-  seed: string
+  seed: string,
+  _customPalette?: string[][]
 ): Preset => {
   const rng = seedrandom(seed);
   const numParticles = Math.floor(random(rng, 40, 100));
@@ -179,7 +181,8 @@ export const generateMeshPreset = (
   name: string,
   theme: PresetTheme,
   isNew: boolean,
-  seed: string
+  seed: string,
+  _customPalette?: string[][]
 ): Preset => {
   const rng = seedrandom(seed);
 
@@ -271,7 +274,8 @@ export const generateStripedPreset = (
   name: string,
   theme: PresetTheme,
   isNew: boolean,
-  seed: string
+  seed: string,
+  _customPalette?: string[][]
 ): Preset => {
   const rng = seedrandom(seed);
   const numStripes = Math.floor(random(rng, 6, 15));
@@ -330,7 +334,7 @@ export const generateStripedPreset = (
   return {
     id,
     name,
-    category: "Geometric",
+    category: "Stripe",
     theme,
     isNew,
     canvas: { width: 500, height: 500, background: colors[0] },

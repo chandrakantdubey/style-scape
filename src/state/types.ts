@@ -113,7 +113,8 @@ export type PresetCategory =
   | "Texture"
   | "Particles"
   | "Mesh"
-  | "Stripe";
+  | "Stripe"
+  | "Mixed";
 
 export interface Preset {
   id: string;

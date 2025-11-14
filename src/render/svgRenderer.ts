@@ -3,30 +3,11 @@ import type { AppState, Layer, GradientLayer, BlobLayer, WaveLayer, PatternLayer
 import { generateBlobPath } from './blobGenerator';
 import { generateWavePath } from './waveGenerator';
 import { generatePatternDef } from './patternGenerator';
+import { renderGradientLayer } from './gradientRenderer';
+import { renderImageLayer } from './imageRenderer';
 
 function renderGradient(layer: GradientLayer): string {
-  const { id, gradientType, angle, stops, cx, cy, r } = layer;
-  const defId = `grad-${id}`;
-  
-  const stopElements = stops
-    .map(s => `<stop offset="${s.offset}%" stop-color="${s.color}" />`)
-    .join('');
-
-  let gradientElement;
-  if (gradientType === 'radial') {
-    const attrs = [`id="${defId}"`];
-    if (cx !== undefined) attrs.push(`cx="${cx}%"`);
-    if (cy !== undefined) attrs.push(`cy="${cy}%"`);
-    if (r !== undefined) attrs.push(`r="${r}%"`);
-    gradientElement = `<radialGradient ${attrs.join(' ')}>${stopElements}</radialGradient>`;
-  } else {
-    gradientElement = `<linearGradient id="${defId}" x1="0%" y1="0%" x2="0%" y2="100%" gradientTransform="rotate(${angle} 0.5 0.5)">${stopElements}</linearGradient>`;
-  }
-
-  return `
-    <defs>${gradientElement}</defs>
-    <rect x="0" y="0" width="100%" height="100%" fill="url(#${defId})" />
-  `;
+  return renderGradientLayer(layer, { width: 100, height: 100, background: 'transparent' });
 }
 
 function renderBlob(layer: BlobLayer, canvas: AppState['canvas']): string {
@@ -50,12 +31,7 @@ function renderPattern(layer: PatternLayer): string {
 }
 
 function renderImage(layer: ImageLayer, canvas: AppState['canvas']): string {
-    const { src, x, y, width, height } = layer;
-    const actualWidth = canvas.width * width;
-    const actualHeight = canvas.height * height;
-    const actualX = canvas.width * x - actualWidth / 2;
-    const actualY = canvas.height * y - actualHeight / 2;
-    return `<image href="${src}" x="${actualX}" y="${actualY}" width="${actualWidth}" height="${actualHeight}" preserveAspectRatio="xMidYMid slice" />`;
+  return renderImageLayer(layer, canvas);
 }
 
 function renderLayer(layer: Layer, canvas: AppState['canvas']): string {
