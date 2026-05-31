@@ -1,57 +1,56 @@
 // App.tsx - React Router Version
-import React, { useState, useEffect, useMemo } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import { renderSVG } from "./render/svgRenderer";
+import { svgToDataUrl } from "./render/svgUtils";
 import { getAverageLuminance } from "./utils/colorAnalyzer";
 import { LayerType } from "./state/types";
 import type { Preset } from "./state/types";
 import { presets } from "./presets";
+import { isActiveCategory } from "./presets/catalog";
 import { useFavorites } from "./hooks/useFavorites";
 import {
   useKeyboardShortcuts,
   commonShortcuts,
 } from "./hooks/useKeyboardShortcuts";
 
-// Zustand store
-import useStore from "./state/store";
-
-// Pages
-import HomePage from "./pages/HomePage";
-import GeneratorPage from "./pages/GeneratorPage";
-import MixerPage from "./pages/MixerPage";
-import BatchExportPage from "./pages/BatchExportPage";
-import ComparisonPage from "./pages/ComparisonPage";
-import PatternDetailPage from "./pages/PatternDetailPage";
-
-// Components
+import useStore, { USER_PRESETS_UPDATED_EVENT } from "./state/store";
 import HelpWidget from "./components/HelpWidget";
+
+const HomePage = lazy(() => import("./pages/HomePage"));
+const GeneratorPage = lazy(() => import("./pages/GeneratorPage"));
+const PatternDetailPage = lazy(() => import("./pages/PatternDetailPage"));
+
+const RouteFallback = () => (
+  <div className="min-h-screen grid place-items-center">
+    <div className="rounded-lg border border-white/15 bg-gray-950/70 px-5 py-3 text-sm font-medium text-white shadow-xl backdrop-blur-md">
+      Loading...
+    </div>
+  </div>
+);
 
 const App: React.FC = () => {
   const [backgroundStyle, setBackgroundStyle] = useState({});
   const [isBgDark, setIsBgDark] = useState(true);
-  const [_currentPreset, setCurrentPreset] = useState<Preset | null>(null);
   const [favorites, toggleFavorite] = useFavorites();
 
-  // Use Zustand store for user-created presets
-  const { addUserCreatedPreset, getUserCreatedPresets } = useStore();
+  const { getUserCreatedPresets } = useStore();
   const [userCreatedPresets, setUserCreatedPresets] = useState<Preset[]>(() => getUserCreatedPresets());
-
-  // Make allPresets reactive to userCreatedPresets changes
-  const allPresets = useMemo(() => [...presets, ...userCreatedPresets], [userCreatedPresets]);
-
-  // Track current background pattern index for keyboard navigation
+  const validUserCreatedPresets = useMemo(
+    () => userCreatedPresets.filter((preset) => isActiveCategory(preset.category)),
+    [userCreatedPresets]
+  );
+  const allPresets = useMemo(() => [...presets, ...validUserCreatedPresets], [validUserCreatedPresets]);
   const [currentBgIndex, setCurrentBgIndex] = useState(0);
 
-  const handlePreview = (preset: Preset) => {
+  const applyPreview = useCallback((preset: Preset) => {
     const svgString = renderSVG({
       canvas: preset.canvas,
       layers: preset.layers,
       selectedLayerId: null,
     } as any);
 
-    const svgDataUrl = `url("data:image/svg+xml,${encodeURIComponent(
-      svgString
-    )}")`;
+    const svgDataUrl = `url("${svgToDataUrl(svgString)}")`;
     setBackgroundStyle({
       backgroundImage: svgDataUrl,
       backgroundSize: "cover",
@@ -59,18 +58,19 @@ const App: React.FC = () => {
       transition: "background-image 0.3s ease-in-out",
     });
 
-    setCurrentPreset(preset);
+    getAverageLuminance(svgString, preset.canvas.width, preset.canvas.height)
+      .then((luminance) => setIsBgDark(luminance < 128))
+      .catch(console.error);
+  }, []);
 
-    // Update current background index
+  const handlePreview = useCallback((preset: Preset) => {
+    applyPreview(preset);
+
     const presetIndex = allPresets.findIndex(p => p.id === preset.id);
     if (presetIndex !== -1) {
       setCurrentBgIndex(presetIndex);
     }
-
-    getAverageLuminance(svgString, preset.canvas.width, preset.canvas.height)
-      .then((luminance) => setIsBgDark(luminance < 128))
-      .catch(console.error);
-  };
+  }, [allPresets, applyPreview]);
 
   // Handlers for cycling through background patterns
   const cycleBackgroundNext = () => {
@@ -87,11 +87,14 @@ const App: React.FC = () => {
     handlePreview(allPresets[prevIndex]);
   };
 
-  const handleCreateMixed = (mixedPreset: Preset) => {
-    addUserCreatedPreset(mixedPreset);
-    setUserCreatedPresets(prev => [...prev, mixedPreset]);
-    handlePreview(mixedPreset);
-  };
+  useEffect(() => {
+    const syncUserPresets = () => {
+      setUserCreatedPresets(getUserCreatedPresets());
+    };
+
+    window.addEventListener(USER_PRESETS_UPDATED_EVENT, syncUserPresets);
+    return () => window.removeEventListener(USER_PRESETS_UPDATED_EVENT, syncUserPresets);
+  }, [getUserCreatedPresets]);
 
   // Initialize with default background
   useEffect(() => {
@@ -121,8 +124,8 @@ const App: React.FC = () => {
         },
       ],
     };
-    handlePreview(initialPreset);
-  }, []);
+    applyPreview(initialPreset);
+  }, [applyPreview]);
 
   // Global keyboard shortcuts
   useKeyboardShortcuts([
@@ -154,75 +157,44 @@ const App: React.FC = () => {
         aria-hidden="true"
       />
 
-      {/* Main Content */}
       <div className="relative min-h-screen">
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <HomePage
-                presets={presets}
-                userCreatedPresets={userCreatedPresets}
-                onPreview={handlePreview}
-                isBgDark={isBgDark}
-                favorites={favorites}
-                onToggleFavorite={toggleFavorite}
-              />
-            }
-          />
-          <Route
-            path="/generator"
-            element={
-              <GeneratorPage onPreview={handlePreview} isBgDark={isBgDark} />
-            }
-          />
-          <Route
-            path="/mixer"
-            element={
-              <MixerPage
-                presets={allPresets}
-                onCreateMixed={handleCreateMixed}
-                onPreview={handlePreview}
-                isBgDark={isBgDark}
-              />
-            }
-          />
-          <Route
-            path="/batch-export"
-            element={
-              <BatchExportPage
-                presets={allPresets}
-                favorites={favorites}
-                isBgDark={isBgDark}
-              />
-            }
-          />
-          <Route
-            path="/compare"
-            element={
-              <ComparisonPage
-                presets={allPresets}
-                onPreview={handlePreview}
-                isBgDark={isBgDark}
-              />
-            }
-          />
-          <Route
-            path="/pattern/:id"
-            element={
-              <PatternDetailPage
-                presets={allPresets}
-                onPreview={handlePreview}
-                favorites={favorites}
-                onToggleFavorite={toggleFavorite}
-                isBgDark={isBgDark}
-              />
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <HomePage
+                  presets={presets}
+                  userCreatedPresets={validUserCreatedPresets}
+                  onPreview={handlePreview}
+                  isBgDark={isBgDark}
+                  favorites={favorites}
+                  onToggleFavorite={toggleFavorite}
+                />
+              }
+            />
+            <Route
+              path="/generator"
+              element={
+                <GeneratorPage onPreview={handlePreview} isBgDark={isBgDark} />
+              }
+            />
+            <Route
+              path="/pattern/:id"
+              element={
+                <PatternDetailPage
+                  presets={allPresets}
+                  onPreview={handlePreview}
+                  favorites={favorites}
+                  onToggleFavorite={toggleFavorite}
+                  isBgDark={isBgDark}
+                />
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
 
-        {/* Help Widget */}
         <HelpWidget isBgDark={isBgDark} />
       </div>
     </BrowserRouter>

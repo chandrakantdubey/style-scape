@@ -1,12 +1,14 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 // Fix: Correctly import LayerType as a value and other interfaces as types.
-import type { AppState, Layer, GradientLayer } from './types';
+import type { AppState, Layer, GradientLayer, Preset } from './types';
 import { LayerType } from './types';
 import { subscribeWithSelector } from 'zustand/middleware';
 
 const LOCAL_STORAGE_KEY = 'bggen_v1';
 const USER_PRESETS_KEY = 'user_created_presets';
+export const USER_PRESETS_UPDATED_EVENT = 'stylescape:user-presets-updated';
+const USER_PRESET_LIMIT = 240;
 
 interface TemporalState {
   past: AppState[];
@@ -20,9 +22,23 @@ interface TemporalState {
   selectLayer: (id: string | null) => void;
   reorderLayer: (id: string, direction: 'up' | 'down') => void;
   updateState: (newState: Partial<AppState>) => void;
-  addUserCreatedPreset: (preset: any) => void; // Add method for user-created presets
-  getUserCreatedPresets: () => any[]; // Get user-created presets
+  addUserCreatedPreset: (preset: Preset) => void;
+  addUserCreatedPresets: (presets: Preset[]) => void;
+  getUserCreatedPresets: () => Preset[];
 }
+
+const normalizeUserPresets = (presets: Preset[]): Preset[] => {
+  const byId = new Map<string, Preset>();
+
+  presets.forEach((preset) => {
+    if (preset?.id) {
+      byId.delete(preset.id);
+      byId.set(preset.id, preset);
+    }
+  });
+
+  return Array.from(byId.values()).slice(-USER_PRESET_LIMIT);
+};
 
 const getInitialState = (): AppState => {
   try {
@@ -61,19 +77,21 @@ const useStore = create<TemporalState>()(
   subscribeWithSelector((set, _get) => {
     
     // Get user created presets from localStorage
-    const getUserCreatedPresets = (): any[] => {
+    const getUserCreatedPresets = (): Preset[] => {
       try {
         const item = window.localStorage.getItem(USER_PRESETS_KEY);
-        return item ? JSON.parse(item) : [];
+        return item ? normalizeUserPresets(JSON.parse(item)) : [];
       } catch (error) {
         console.error("Error reading user presets from localStorage", error);
         return [];
       }
     };
 
-    const setUserCreatedPresets = (presets: any[]) => {
+    const setUserCreatedPresets = (presets: Preset[]) => {
       try {
-        window.localStorage.setItem(USER_PRESETS_KEY, JSON.stringify(presets));
+        const normalizedPresets = normalizeUserPresets(presets);
+        window.localStorage.setItem(USER_PRESETS_KEY, JSON.stringify(normalizedPresets));
+        window.dispatchEvent(new CustomEvent(USER_PRESETS_UPDATED_EVENT, { detail: normalizedPresets }));
       } catch (error) {
         console.error("Error saving user presets to localStorage", error);
       }
@@ -193,10 +211,12 @@ const useStore = create<TemporalState>()(
       updateState: (newState: Partial<AppState>) => {
           setStateWithHistory(state => ({ ...state, ...newState }));
       },
-      addUserCreatedPreset: (preset: any) => {
-        const currentPresets = getUserCreatedPresets();
-        const updatedPresets = [...currentPresets, preset];
-        setUserCreatedPresets(updatedPresets);
+      addUserCreatedPreset: (preset: Preset) => {
+        setUserCreatedPresets([...getUserCreatedPresets(), preset]);
+      },
+      addUserCreatedPresets: (presets: Preset[]) => {
+        if (presets.length === 0) return;
+        setUserCreatedPresets([...getUserCreatedPresets(), ...presets]);
       },
       getUserCreatedPresets: () => getUserCreatedPresets(),
     };

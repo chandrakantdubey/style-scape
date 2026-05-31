@@ -1,17 +1,20 @@
 // render/imageRenderer.ts
 import type { ImageLayer, CanvasState } from '../state/types';
+import { clamp, escapeSvgAttribute, formatNumber } from './svgUtils';
 
 export function renderImageLayer(layer: ImageLayer, canvas: CanvasState): string {
   if (!layer.visible) return '';
 
   const { src, x, y, width, height, opacity, blendMode } = layer;
-  const actualWidth = canvas.width * width;
-  const actualHeight = canvas.height * height;
-  const actualX = canvas.width * x - actualWidth / 2;
-  const actualY = canvas.height * y - actualHeight / 2;
+  const safeWidth = clamp(width, 0.01, 4, 1);
+  const safeHeight = clamp(height, 0.01, 4, 1);
+  const actualWidth = canvas.width * safeWidth;
+  const actualHeight = canvas.height * safeHeight;
+  const actualX = canvas.width * clamp(x, -1, 2, 0.5) - actualWidth / 2;
+  const actualY = canvas.height * clamp(y, -1, 2, 0.5) - actualHeight / 2;
 
-  return `<g style="opacity: ${opacity}; mix-blend-mode: ${blendMode};">
-    <image href="${src}" x="${actualX}" y="${actualY}" width="${actualWidth}" height="${actualHeight}" preserveAspectRatio="xMidYMid slice" />
+  return `<g style="opacity: ${formatNumber(clamp(opacity, 0, 1, 1))}; mix-blend-mode: ${escapeSvgAttribute(blendMode || 'normal')};">
+    <image href="${escapeSvgAttribute(src)}" x="${formatNumber(actualX)}" y="${formatNumber(actualY)}" width="${formatNumber(actualWidth)}" height="${formatNumber(actualHeight)}" preserveAspectRatio="xMidYMid slice" />
   </g>`;
 }
 

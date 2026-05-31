@@ -102,19 +102,10 @@ export type PresetTheme = "light" | "dark" | "colored";
 
 export type PresetCategory =
   | "Gradients"
-  | "Decorative"
-  | "Geometric"
-  | "Minimalist"
   | "Waves"
-  | "Abstract"
-  | "Metallic"
   | "Grid"
   | "Glassmorphism"
-  | "Texture"
-  | "Particles"
-  | "Mesh"
-  | "Stripe"
-  | "Mixed";
+  | "Abstract";
 
 export interface Preset {
   id: string;

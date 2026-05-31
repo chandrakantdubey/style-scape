@@ -1,31 +1,11 @@
-import React, { useState, useMemo, useCallback, Suspense } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router";
-import type { Preset, PresetCategory, PresetTheme } from "../state/types";
+import type { Preset, PresetTheme } from "../state/types";
 import { renderSVG } from "../render/svgRenderer";
+import { svgToDataUrl } from "../render/svgUtils";
 import { StarIcon, SearchIcon, Logo, GithubIcon } from "../components/Icons";
-
-// Import generators for lazy loading
-import {
-  generateGradientPreset,
-  generateBlobPreset,
-  generatePatternPreset,
-  generateWavePreset,
-  generateAbstractPreset,
-  generateMetallicPreset,
-  generateGridPreset,
-  generateMinimalistPreset,
-  generateGlassPreset,
-} from "../presets/generators";
-
-import {
-  generateNoisePreset,
-  generateParticlePreset,
-  generateMeshPreset,
-  generateStripedPreset,
-} from "../presets/enhancedGenerators";
-
-// Add Zustand store import for saving lazy-loaded patterns
-import useStore from "../state/store";
+import { ACTIVE_CATEGORIES, generatorMap, isActiveCategory } from "../presets/catalog";
+import { saveSessionState, useSessionState } from "../hooks/useSessionState";
 
 interface HomePageProps {
   presets: Preset[];
@@ -45,39 +25,39 @@ const HomePage: React.FC<HomePageProps> = ({
   onToggleFavorite,
 }) => {
   const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = useState("Gradients");
-  const [activeThemeFilter, setActiveThemeFilter] = useState("All");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [activeCategory, setActiveCategoryState] = useSessionState("stylescape:home-category", "Gradients");
+  const [activeThemeFilter, setActiveThemeFilterState] = useSessionState("stylescape:home-theme", "All");
+  const [searchTerm, setSearchTermState] = useSessionState("stylescape:home-search", "");
   const [loadingCategories, setLoadingCategories] = useState<Set<string>>(new Set());
   const [generatedCategories, setGeneratedCategories] = useState<Set<string>>(new Set());
+  const [runtimeGeneratedPresets, setRuntimeGeneratedPresets] = useState<Preset[]>([]);
 
-  // Add Zustand store hook for saving lazy-loaded patterns
-  const { addUserCreatedPreset } = useStore();
+  const setActiveCategory = useCallback((category: string) => {
+    setActiveCategoryState(category);
+    saveSessionState("stylescape:home-category", category);
+  }, [setActiveCategoryState]);
 
-  const generatorMap: Record<Exclude<PresetCategory, "Mixed">, (id: string, name: string, theme: PresetTheme, isNew: boolean, seed: string, customPalette?: string[][]) => Preset> = {
-    'Gradients': generateGradientPreset,
-    'Decorative': generateBlobPreset,
-    'Geometric': generatePatternPreset,
-    'Minimalist': generateMinimalistPreset,
-    'Waves': generateWavePreset,
-    'Abstract': generateAbstractPreset,
-    'Metallic': generateMetallicPreset,
-    'Grid': generateGridPreset,
-    'Glassmorphism': generateGlassPreset,
-    'Texture': generateNoisePreset,
-    'Particles': generateParticlePreset,
-    'Mesh': generateMeshPreset,
-    'Stripe': generateStripedPreset,
-  };
+  const setActiveThemeFilter = useCallback((theme: string) => {
+    setActiveThemeFilterState(theme);
+    saveSessionState("stylescape:home-theme", theme);
+  }, [setActiveThemeFilterState]);
 
-  const allPresets = [...presets, ...userCreatedPresets];
+  const setSearchTerm = useCallback((term: string) => {
+    setSearchTermState(term);
+    saveSessionState("stylescape:home-search", term);
+  }, [setSearchTermState]);
+
+  const allPresets = useMemo(
+    () => [...presets, ...userCreatedPresets, ...runtimeGeneratedPresets],
+    [presets, userCreatedPresets, runtimeGeneratedPresets]
+  );
 
   // Lazy loading function
   const handleCategoryClick = useCallback((category: string) => {
     setActiveCategory(category);
 
     // Skip lazy loading for special categories
-    if (category === "Favourites" || category === "User Created") {
+    if (category === "Favourites" || category === "User Created" || !isActiveCategory(category)) {
       return;
     }
 
@@ -95,7 +75,7 @@ const HomePage: React.FC<HomePageProps> = ({
       const themesToGenerate: PresetTheme[] = ["light", "dark", "colored"];
 
       themesToGenerate.forEach((theme) => {
-        const generator = generatorMap[category as Exclude<PresetCategory, "Mixed">];
+        const generator = generatorMap[category];
         // Generate 30 patterns per theme (90 total per category)
         for (let i = 0; i < 30; i++) {
           const id = `${category.toLowerCase().replace(" ", "")}-${theme}-${i}`;
@@ -103,9 +83,13 @@ const HomePage: React.FC<HomePageProps> = ({
           const seed = id;
           const preset = generator(id, name, theme, false, seed);
           newPatterns.push(preset);
-          // Save to user store for persistence
-          addUserCreatedPreset(preset);
         }
+      });
+
+      setRuntimeGeneratedPresets(prev => {
+        const byId = new Map(prev.map((preset) => [preset.id, preset]));
+        newPatterns.forEach((preset) => byId.set(preset.id, preset));
+        return Array.from(byId.values());
       });
 
       // Mark category as generated
@@ -116,7 +100,7 @@ const HomePage: React.FC<HomePageProps> = ({
         return newSet;
       });
     }, 100);
-  }, [generatedCategories, generatorMap, addUserCreatedPreset]);
+  }, [generatedCategories, setActiveCategory]);
 
   const filteredPresets = useMemo(() => {
     return allPresets.filter((p) => {
@@ -143,25 +127,9 @@ const HomePage: React.FC<HomePageProps> = ({
 
       return true;
     });
-  }, [activeCategory, activeThemeFilter, searchTerm, favorites, presets, userCreatedPresets]);
+  }, [activeCategory, activeThemeFilter, searchTerm, favorites, allPresets, userCreatedPresets]);
 
-  const categories = [
-    "Gradients",
-    "Decorative",
-    "Geometric",
-    "Minimalist",
-    "Waves",
-    "Abstract",
-    "Metallic",
-    "Grid",
-    "Glassmorphism",
-    "Texture",
-    "Particles",
-    "Mesh",
-    "Stripe",
-    "Favourites",
-    "User Created",
-  ];
+  const categories = [...ACTIVE_CATEGORIES, "Favourites", "User Created"];
   const themeFilters = ["All", "Light", "Dark", "Colored"];
 
   const textColor = isBgDark ? "text-white" : "text-gray-900";
@@ -185,9 +153,7 @@ const HomePage: React.FC<HomePageProps> = ({
       layers: preset.layers,
       selectedLayerId: null,
     } as any);
-    return `data:image/svg+xml;base64,${btoa(
-      unescape(encodeURIComponent(svgString))
-    )}`;
+    return svgToDataUrl(svgString);
   }, []);
 
   return (
@@ -217,22 +183,22 @@ const HomePage: React.FC<HomePageProps> = ({
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <h1
-            className={`text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tighter drop-shadow-lg ${textColor}`}
+            className={`readable-on-bg text-5xl md:text-6xl lg:text-7xl font-extrabold drop-shadow-lg ${textColor}`}
           >
             Instantly Generate
             <span className={`block ${accentColor}`}>Stunning Backgrounds</span>
           </h1>
           <p
-            className={`mt-6 max-w-2xl mx-auto text-lg md:text-xl drop-shadow-md ${subtitleColor}`}
+            className={`readable-on-bg mt-6 max-w-2xl mx-auto text-lg md:text-xl drop-shadow-md ${subtitleColor}`}
           >
-            Over {presets.length}+ unique, procedurally generated patterns. Mix,
-            compare, and export with React, Vue, Tailwind, and more.
+            Over {presets.length}+ focused procedural backgrounds across
+            gradients, waves, grids, glass, and abstract compositions.
           </p>
 
           <div className="mt-10 flex justify-center gap-4 flex-wrap">
             <button
               onClick={() => navigate("/generator")}
-              className="group relative inline-flex items-center gap-2 bg-indigo-600 text-white font-semibold px-8 py-4 rounded-xl shadow-xl hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/50 transition-all transform hover:scale-105 active:scale-95"
+              className="control-surface group relative inline-flex items-center justify-center gap-2 bg-indigo-600 text-white font-semibold px-8 py-4 rounded-lg shadow-xl hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/50 transition-all transform hover:scale-105 active:scale-95"
             >
               <svg
                 className="w-5 h-5"
@@ -254,7 +220,11 @@ const HomePage: React.FC<HomePageProps> = ({
             </button>
             <a
               href="#patterns"
-              className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white font-semibold px-8 py-4 rounded-xl shadow-xl hover:bg-white/30 focus:outline-none focus:ring-4 focus:ring-white/50 transition-all transform hover:scale-105 active:scale-95"
+              className={`control-surface inline-flex items-center justify-center gap-2 font-semibold px-8 py-4 rounded-lg shadow-xl focus:outline-none focus:ring-4 transition-all transform hover:scale-105 active:scale-95 ${
+                isBgDark
+                  ? "bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 focus:ring-white/50"
+                  : "bg-gray-950/85 backdrop-blur-sm text-white hover:bg-gray-950 focus:ring-gray-950/30"
+              }`}
             >
               <svg
                 className="w-5 h-5"
@@ -273,102 +243,44 @@ const HomePage: React.FC<HomePageProps> = ({
             </a>
           </div>
 
-          <div className="mt-6 flex justify-center gap-3 flex-wrap">
-            <button
-              onClick={() => navigate("/mixer")}
-              className="inline-flex items-center gap-2 bg-purple-600/90 backdrop-blur-sm text-white font-medium px-6 py-3 rounded-lg shadow-lg hover:bg-purple-700 transition-all transform hover:scale-105 active:scale-95"
-              title="Mix multiple patterns together"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-                />
-              </svg>
-              Pattern Mixer
-            </button>
-            <button
-              onClick={() => navigate("/batch-export")}
-              className="inline-flex items-center gap-2 bg-green-600/90 backdrop-blur-sm text-white font-medium px-6 py-3 rounded-lg shadow-lg hover:bg-green-700 transition-all transform hover:scale-105 active:scale-95"
-              title="Export multiple patterns at once"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                />
-              </svg>
-              Batch Export
-            </button>
-            <button
-              onClick={() => navigate("/compare")}
-              className="inline-flex items-center gap-2 bg-blue-600/90 backdrop-blur-sm text-white font-medium px-6 py-3 rounded-lg shadow-lg hover:bg-blue-700 transition-all transform hover:scale-105 active:scale-95"
-              title="Compare patterns side by side"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                />
-              </svg>
-              Compare
-            </button>
-          </div>
-
           {/* Feature Highlights */}
           <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             <div
-              className={`backdrop-blur-md bg-white/10 rounded-xl p-6 border border-white/20 ${textColor}`}
+              className={`control-surface backdrop-blur-md rounded-lg p-6 border ${
+                isBgDark ? "bg-gray-950/60 border-white/20 text-white" : "bg-white/85 border-gray-200 text-gray-950"
+              }`}
             >
               <div className="text-3xl mb-3">🎨</div>
               <h3 className="font-bold text-lg mb-2">
                 {allPresets.length}+ Patterns
               </h3>
               <p className="text-sm opacity-80">
-                Procedurally generated backgrounds in multiple categories and
-                themes
+                Five distinct visual engines with light, dark, and colored
+                variants
               </p>
             </div>
 
             <div
-              className={`backdrop-blur-md bg-white/10 rounded-xl p-6 border border-white/20 ${textColor}`}
+              className={`control-surface backdrop-blur-md rounded-lg p-6 border ${
+                isBgDark ? "bg-gray-950/60 border-white/20 text-white" : "bg-white/85 border-gray-200 text-gray-950"
+              }`}
             >
               <div className="text-3xl mb-3">⚡</div>
               <h3 className="font-bold text-lg mb-2">One-Click Export</h3>
               <p className="text-sm opacity-80">
-                CSS, Tailwind, React, Vue, Svelte, SVG, PNG - we've got you
-                covered
+                Copy CSS or export production-ready SVG and PNG assets
               </p>
             </div>
 
             <div
-              className={`backdrop-blur-md bg-white/10 rounded-xl p-6 border border-white/20 ${textColor}`}
+              className={`control-surface backdrop-blur-md rounded-lg p-6 border ${
+                isBgDark ? "bg-gray-950/60 border-white/20 text-white" : "bg-white/85 border-gray-200 text-gray-950"
+              }`}
             >
-              <div className="text-3xl mb-3">🚀</div>
-              <h3 className="font-bold text-lg mb-2">Power Features</h3>
+              <div className="text-3xl mb-3">▦</div>
+              <h3 className="font-bold text-lg mb-2">Saved Context</h3>
               <p className="text-sm opacity-80">
-                Mix patterns, batch export, compare side-by-side, and more
+                Return from details or generation to the same selected filters
               </p>
             </div>
           </div>
@@ -490,20 +402,7 @@ const HomePage: React.FC<HomePageProps> = ({
         </p>
 
         {/* Pattern Grid */}
-        <Suspense fallback={
-          <div className="text-center py-12">
-            <div className="inline-block">
-              <svg className="animate-spin h-12 w-12 text-indigo-600" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </div>
-            <p className={`mt-4 text-lg font-semibold ${textColor}`}>
-              Generating patterns...
-            </p>
-          </div>
-        }>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredPresets.map((preset) => {
               const dataUrl = getSVGDataUrl(preset);
               const isFavorite = favorites.includes(preset.id);
@@ -554,8 +453,7 @@ const HomePage: React.FC<HomePageProps> = ({
                 </div>
               );
             })}
-          </div>
-        </Suspense>
+        </div>
 
         {filteredPresets.length === 0 && (
           <div

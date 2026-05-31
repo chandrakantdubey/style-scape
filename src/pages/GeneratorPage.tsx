@@ -2,27 +2,11 @@
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { HexColorPicker } from "react-colorful";
-import type { Preset, PresetCategory, PresetTheme } from "../state/types";
-import {
-  generateGradientPreset,
-  generateBlobPreset,
-  generatePatternPreset,
-  generateWavePreset,
-  generateAbstractPreset,
-  generateMetallicPreset,
-  generateGridPreset,
-  generateMinimalistPreset,
-  generateGlassPreset,
-} from "../presets/generators";
-import {
-  generateNoisePreset,
-  generateParticlePreset,
-  generateMeshPreset,
-  generateStripedPreset,
-} from "../presets/enhancedGenerators";
+import type { Preset, PresetTheme } from "../state/types";
+import { ACTIVE_CATEGORIES, generatorMap, type ActivePresetCategory } from "../presets/catalog";
 import { renderSVG } from "../render/svgRenderer";
-
-// Add Zustand store import
+import { svgToDataUrl } from "../render/svgUtils";
+import { saveSessionState, useSessionState } from "../hooks/useSessionState";
 import useStore from "../state/store";
 
 interface GeneratorPageProps {
@@ -30,34 +14,7 @@ interface GeneratorPageProps {
   isBgDark: boolean;
 }
 
-const generatorMap: Record<
-  Exclude<PresetCategory, "Mixed">,
-  (
-    id: string,
-    name: string,
-    theme: PresetTheme,
-    isNew: boolean,
-    seed: string,
-    customPalette?: string[][]
-  ) => Preset
-> = {
-  Gradients: generateGradientPreset,
-  Decorative: generateBlobPreset,
-  Geometric: generatePatternPreset,
-  Minimalist: generateMinimalistPreset,
-  Waves: generateWavePreset,
-  Abstract: generateAbstractPreset,
-  Metallic: generateMetallicPreset,
-  Grid: generateGridPreset,
-  Glassmorphism: generateGlassPreset,
-  Texture: generateNoisePreset,
-  Particles: generateParticlePreset,
-  Mesh: generateMeshPreset,
-  Stripe: generateStripedPreset,
-};
-
-const CATEGORIES = Object.keys(generatorMap) as PresetCategory[];
-const FILTER_CATEGORIES: ("All" | PresetCategory)[] = ["All", ...CATEGORIES];
+const FILTER_CATEGORIES: ("All" | ActivePresetCategory)[] = ["All", ...ACTIVE_CATEGORIES];
 const THEME_FILTERS: ("All" | "Light" | "Dark")[] = ["All", "Light", "Dark"];
 
 const GeneratorPage: React.FC<GeneratorPageProps> = ({
@@ -65,20 +22,41 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
   isBgDark,
 }) => {
   const navigate = useNavigate();
-  const [colors, setColors] = useState([
+  const [colors, setColors] = useState(() => [
     { id: `c-${Date.now()}-1`, value: "#6366f1" },
     { id: `c-${Date.now()}-2`, value: "#ec4899" },
   ]);
   const [generatedPatterns, setGeneratedPatterns] = useState<Preset[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<PresetCategory>("Gradients");
+  const [selectedCategory, setSelectedCategoryState] = useSessionState<ActivePresetCategory>(
+    "stylescape:generator-category",
+    "Gradients"
+  );
 
-  // Add Zustand store hook
-  const { addUserCreatedPreset } = useStore();
+  const { addUserCreatedPresets } = useStore();
+  const [activeCategory, setActiveCategoryState] = useSessionState<string>(
+    "stylescape:generator-filter-category",
+    "All"
+  );
+  const [activeThemeFilter, setActiveThemeFilterState] = useSessionState<string>(
+    "stylescape:generator-filter-theme",
+    "All"
+  );
 
-  // State for filtering results
-  const [activeCategory, setActiveCategory] = useState<string>("All");
-  const [activeThemeFilter, setActiveThemeFilter] = useState<string>("All");
+  const setSelectedCategory = (category: ActivePresetCategory) => {
+    setSelectedCategoryState(category);
+    saveSessionState("stylescape:generator-category", category);
+  };
+
+  const setActiveCategory = (category: string) => {
+    setActiveCategoryState(category);
+    saveSessionState("stylescape:generator-filter-category", category);
+  };
+
+  const setActiveThemeFilter = (theme: string) => {
+    setActiveThemeFilterState(theme);
+    saveSessionState("stylescape:generator-filter-theme", theme);
+  };
 
   const updateColor = (id: string, newColor: string) => {
     setColors((prev) =>
@@ -124,12 +102,10 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
 
       // Only generate for selected category
       themesToGenerate.forEach((theme) => {
-        const generator = generatorMap[selectedCategory as keyof typeof generatorMap];
-        // Generate 30 patterns per theme (90 total)
+        const generator = generatorMap[selectedCategory];
         for (let i = 0; i < 30; i++) {
-          // Create stable, predictable ID for routing
           const id = `user-generated-${selectedCategory.toLowerCase()}-${theme}-${i}`;
-          const seed = id; // Use stable seed based on ID
+          const seed = id;
           const name = `Generated ${selectedCategory} ${theme} #${i + 1}`;
           const preset = generator(
             id,
@@ -140,10 +116,10 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
             customPalette
           );
           newPatterns.push(preset);
-          // Save each generated pattern to user store
-          addUserCreatedPreset(preset);
         }
       });
+
+      addUserCreatedPresets(newPatterns);
 
       // Shuffle patterns
       for (let i = newPatterns.length - 1; i > 0; i--) {
@@ -157,7 +133,7 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
         onPreview(newPatterns[0]);
       }
     }, 100);
-  }, [colors, selectedCategory, onPreview]);
+  }, [addUserCreatedPresets, colors, selectedCategory, onPreview]);
 
   const filteredPatterns = generatedPatterns.filter((p) => {
     if (activeCategory !== "All" && p.category !== activeCategory) {
@@ -283,8 +259,8 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
                 <h4 className={`text-md font-semibold mb-3 ${textColor}`}>
                   Select Pattern Type
                 </h4>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {CATEGORIES.map((category) => (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                  {ACTIVE_CATEGORIES.map((category) => (
                     <button
                       key={category}
                       onClick={() => setSelectedCategory(category)}
@@ -333,7 +309,7 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
                     Generating...
                   </span>
                 ) : (
-                  `Generate 90 ${selectedCategory} Patterns`
+                  `Generate 60 ${selectedCategory} Patterns`
                 )}
               </button>
               <div
@@ -341,7 +317,7 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
                   isBgDark ? "text-gray-400" : "text-gray-600"
                 }`}
               >
-                Generate 90 custom {selectedCategory.toLowerCase()} patterns using your color palette
+                Generate 60 custom {selectedCategory.toLowerCase()} patterns using your color palette
               </div>
             </div>
           </div>
@@ -436,9 +412,7 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
                   layers: preset.layers,
                   selectedLayerId: null,
                 } as any);
-                const dataUrl = `data:image/svg+xml;base64,${btoa(
-                  unescape(encodeURIComponent(svgString))
-                )}`;
+                const dataUrl = svgToDataUrl(svgString);
 
                 return (
                   <div

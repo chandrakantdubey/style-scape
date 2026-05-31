@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router";
 import type { Preset } from "../state/types";
 import { renderSVG } from "../render/svgRenderer";
 import { CheckIcon, CopyIcon, StarIcon } from "../components/Icons";
+import { saveSessionState, useSessionState } from "../hooks/useSessionState";
 
 interface PatternDetailPageProps {
   presets: Preset[];
@@ -32,11 +33,19 @@ const PatternDetailPage: React.FC<PatternDetailPageProps> = ({
 }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<ExportFormat>("css");
+  const [activeTab, setActiveTabState] = useSessionState<ExportFormat>(
+    "stylescape:detail-export-tab",
+    "css"
+  );
   const [copiedFormat, setCopiedFormat] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 1920, height: 1080 });
 
   const preset = presets.find((p) => p.id === id);
+
+  const setActiveTab = (tab: ExportFormat) => {
+    setActiveTabState(tab);
+    saveSessionState("stylescape:detail-export-tab", tab);
+  };
 
   const svgString = useMemo(() => {
     if (!preset) return "";
@@ -102,8 +111,11 @@ const PatternDetailPage: React.FC<PatternDetailPageProps> = ({
   <!-- Your content here -->
 </div>
 
-<!-- Arbitrary value approach (Tailwind 3.0+) -->
-<div class="min-h-screen bg-[url('${dataUrl}')] bg-cover bg-center">
+<!-- Tailwind utility approach -->
+<div 
+  class="min-h-screen bg-cover bg-center bg-no-repeat" 
+  style="background-image: url('${dataUrl}')"
+>
   <!-- Your content here -->
 </div>`;
 

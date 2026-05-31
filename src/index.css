@@ -1,1 +1,19 @@
 @import "tailwindcss";
+
+@layer base {
+  button,
+  a {
+    overflow-wrap: anywhere;
+    line-height: 1.2;
+  }
+}
+
+@layer utilities {
+  .readable-on-bg {
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.55), 0 10px 28px rgb(0 0 0 / 0.28);
+  }
+
+  .control-surface {
+    box-shadow: 0 16px 48px rgb(0 0 0 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.08);
+  }
+}

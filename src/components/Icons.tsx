@@ -54,7 +54,6 @@ export const CopyIcon: React.FC<{ className?: string }> = ({ className = "h-5 w-
         <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 7.5H6a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25v-2.25m-9.75-9.75h9.75a2.25 2.25 0 012.25 2.25v9.75m0-9.75L14.25 12" />
     </svg>
 );
-// Fix: Add and export a StarIcon component to resolve the import error in PatternLibrary.tsx.
 export const StarIcon: React.FC<{ filled?: boolean; className?: string }> = ({ filled = false, className = "h-5 w-5" }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill={filled ? 'currentColor' : 'none'} stroke="currentColor">
         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />

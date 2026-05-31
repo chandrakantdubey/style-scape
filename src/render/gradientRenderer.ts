@@ -1,30 +1,41 @@
 // render/gradientRenderer.ts
 import type { GradientLayer, CanvasState } from '../state/types';
+import { clamp, escapeSvgAttribute, formatNumber } from './svgUtils';
 
 export function renderGradientLayer(layer: GradientLayer): string {
   if (!layer.visible) return '';
 
   const { id, gradientType, angle, stops, cx, cy, r, opacity, blendMode } = layer;
-  const defId = `grad-${id}`;
+  const defId = `grad-${escapeSvgAttribute(id)}`;
+  const safeStops = [...stops]
+    .filter((stop) => stop.color)
+    .sort((a, b) => a.offset - b.offset);
 
-  const stopElements = stops
-    .map(s => `<stop offset="${s.offset}%" stop-color="${s.color}" />`)
+  const stopElements = (safeStops.length > 0 ? safeStops : [{ id: 'fallback', color: '#000000', offset: 0 }])
+    .map(s => `<stop offset="${formatNumber(clamp(s.offset, 0, 100, 0))}%" stop-color="${escapeSvgAttribute(s.color)}" />`)
     .join('');
 
   let gradientElement;
   if (gradientType === 'radial') {
     const attrs = [`id="${defId}"`];
-    if (cx !== undefined) attrs.push(`cx="${cx}%"`);
-    if (cy !== undefined) attrs.push(`cy="${cy}%"`);
-    if (r !== undefined) attrs.push(`r="${r}%"`);
+    attrs.push(`cx="${formatNumber(clamp(cx, 0, 100, 50))}%"`);
+    attrs.push(`cy="${formatNumber(clamp(cy, 0, 100, 50))}%"`);
+    attrs.push(`r="${formatNumber(clamp(r, 1, 160, 75))}%"`);
     gradientElement = `<radialGradient ${attrs.join(' ')}>${stopElements}</radialGradient>`;
   } else {
-    gradientElement = `<linearGradient id="${defId}" x1="0%" y1="0%" x2="0%" y2="100%" gradientTransform="rotate(${angle} 0.5 0.5)">${stopElements}</linearGradient>`;
+    const radians = (clamp(angle, -360, 360, 0) - 90) * (Math.PI / 180);
+    const x = Math.cos(radians);
+    const y = Math.sin(radians);
+    const x1 = formatNumber(50 - x * 50);
+    const y1 = formatNumber(50 - y * 50);
+    const x2 = formatNumber(50 + x * 50);
+    const y2 = formatNumber(50 + y * 50);
+    gradientElement = `<linearGradient id="${defId}" x1="${x1}%" y1="${y1}%" x2="${x2}%" y2="${y2}%">${stopElements}</linearGradient>`;
   }
 
   return `
     <defs>${gradientElement}</defs>
-    <g style="opacity: ${opacity}; mix-blend-mode: ${blendMode};">
+    <g style="opacity: ${formatNumber(clamp(opacity, 0, 1, 1))}; mix-blend-mode: ${escapeSvgAttribute(blendMode || 'normal')};">
       <rect x="0" y="0" width="100%" height="100%" fill="url(#${defId})" />
     </g>
   `;
