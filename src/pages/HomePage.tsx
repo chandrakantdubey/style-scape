@@ -208,19 +208,24 @@ const HomePage: React.FC<HomePageProps> = ({
           </nav>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <h1
-            className={`readable-on-bg text-5xl md:text-6xl lg:text-7xl font-extrabold drop-shadow-lg ${textColor}`}
-          >
-            Instantly Generate
-            <span className={`block ${accentColor}`}>Stunning Backgrounds</span>
-          </h1>
-          <p
-            className={`readable-on-bg mt-6 max-w-2xl mx-auto text-lg md:text-xl drop-shadow-md ${subtitleColor}`}
-          >
-            Over {presets.length}+ focused procedural backgrounds across
-            gradients, waves, grids, glass, and abstract compositions.
-          </p>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className={`p-8 sm:p-12 md:p-16 rounded-3xl backdrop-blur-xl border shadow-2xl transition-all duration-300 ${
+            isBgDark
+              ? "bg-gray-950/45 border-white/10 shadow-black/45"
+              : "bg-white/45 border-gray-200 shadow-gray-200/40"
+          }`}>
+            <h1
+              className={`text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight ${textColor}`}
+            >
+              Instantly Generate
+              <span className={`block ${accentColor}`}>Stunning Backgrounds</span>
+            </h1>
+            <p
+              className={`mt-6 max-w-2xl mx-auto text-lg md:text-xl font-medium ${subtitleColor}`}
+            >
+              Over {presets.length}+ focused procedural backgrounds across
+              gradients, waves, grids, glass, and abstract compositions.
+            </p>
 
           <div className="mt-10 flex justify-center gap-4 flex-wrap">
             <button
@@ -269,6 +274,7 @@ const HomePage: React.FC<HomePageProps> = ({
               Explore Library
             </a>
           </div>
+        </div>
 
           {/* Feature Highlights */}
           <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">

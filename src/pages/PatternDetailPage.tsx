@@ -69,9 +69,8 @@ const PatternDetailPage: React.FC<PatternDetailPageProps> = ({
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h2
-            className={`text-2xl font-bold ${
-              isBgDark ? "text-white" : "text-gray-900"
-            }`}
+            className={`text-2xl font-bold ${isBgDark ? "text-white" : "text-gray-900"
+              }`}
           >
             Pattern not found
           </h2>
@@ -306,12 +305,12 @@ const bgStyle = computed(() => ({
           format === "react"
             ? "tsx"
             : format === "vue"
-            ? "vue"
-            : format === "svelte"
-            ? "svelte"
-            : format === "tailwind"
-            ? "html"
-            : "css";
+              ? "vue"
+              : format === "svelte"
+                ? "svelte"
+                : format === "tailwind"
+                  ? "html"
+                  : "css";
         const codeBlob = new Blob([getCode(format)], { type: "text/plain" });
         downloadFile(codeBlob, `${sanitizedName}.${ext}`);
         break;
@@ -345,22 +344,20 @@ const bgStyle = computed(() => ({
             <div className="flex items-center gap-4">
               <button
                 onClick={() => navigate("/")}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  isBgDark
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${isBgDark
                     ? "bg-gray-800 hover:bg-gray-700 text-white"
                     : "bg-gray-200 hover:bg-gray-300 text-gray-900"
-                }`}
+                  }`}
               >
-                ← Back
+                Back
               </button>
               <div>
                 <h1 className={`text-2xl font-bold ${textColor}`}>
                   {preset.name}
                 </h1>
                 <p
-                  className={`text-sm ${
-                    isBgDark ? "text-gray-400" : "text-gray-600"
-                  }`}
+                  className={`text-sm ${isBgDark ? "text-gray-400" : "text-gray-600"
+                    }`}
                 >
                   {preset.category} • {preset.theme}
                 </p>
@@ -368,13 +365,12 @@ const bgStyle = computed(() => ({
             </div>
             <button
               onClick={() => onToggleFavorite(preset.id)}
-              className={`p-2 rounded-lg transition-colors ${
-                isFavorite
+              className={`p-2 rounded-lg transition-colors ${isFavorite
                   ? "text-yellow-400 bg-yellow-400/10"
                   : isBgDark
-                  ? "text-gray-400 hover:text-yellow-400"
-                  : "text-gray-600 hover:text-yellow-600"
-              }`}
+                    ? "text-gray-400 hover:text-yellow-400"
+                    : "text-gray-600 hover:text-yellow-600"
+                }`}
             >
               <StarIcon filled={isFavorite} className="w-6 h-6" />
             </button>
@@ -420,13 +416,12 @@ const bgStyle = computed(() => ({
               <h2 className={`text-xl font-bold ${textColor}`}>Export Code</h2>
               <button
                 onClick={() => handleCopy(activeTab)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  copiedFormat === activeTab
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${copiedFormat === activeTab
                     ? "bg-green-600 text-white"
                     : isBgDark
-                    ? "bg-gray-800 hover:bg-gray-700 text-white"
-                    : "bg-gray-200 hover:bg-gray-300 text-gray-900"
-                }`}
+                      ? "bg-gray-800 hover:bg-gray-700 text-white"
+                      : "bg-gray-200 hover:bg-gray-300 text-gray-900"
+                  }`}
               >
                 {copiedFormat === activeTab ? (
                   <>
@@ -448,13 +443,12 @@ const bgStyle = computed(() => ({
                 <button
                   key={tab.value}
                   onClick={() => setActiveTab(tab.value)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1 ${
-                    activeTab === tab.value
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1 ${activeTab === tab.value
                       ? "bg-indigo-600 text-white shadow-lg scale-105"
                       : isBgDark
-                      ? "bg-gray-800 hover:bg-gray-700 text-gray-300"
-                      : "bg-gray-200 hover:bg-gray-300 text-gray-700"
-                  }`}
+                        ? "bg-gray-800 hover:bg-gray-700 text-gray-300"
+                        : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                    }`}
                 >
                   <span>{tab.icon}</span>
                   <span className="hidden sm:inline">{tab.label}</span>
@@ -480,11 +474,10 @@ const bgStyle = computed(() => ({
                         width: parseInt(e.target.value) || 1920,
                       })
                     }
-                    className={`w-full px-3 py-2 rounded-lg border ${borderColor} ${
-                      isBgDark
+                    className={`w-full px-3 py-2 rounded-lg border ${borderColor} ${isBgDark
                         ? "bg-gray-800 text-white"
                         : "bg-white text-gray-900"
-                    } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                      } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
                   />
                 </div>
                 <div>
@@ -502,11 +495,10 @@ const bgStyle = computed(() => ({
                         height: parseInt(e.target.value) || 1080,
                       })
                     }
-                    className={`w-full px-3 py-2 rounded-lg border ${borderColor} ${
-                      isBgDark
+                    className={`w-full px-3 py-2 rounded-lg border ${borderColor} ${isBgDark
                         ? "bg-gray-800 text-white"
                         : "bg-white text-gray-900"
-                    } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                      } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
                   />
                 </div>
               </div>
@@ -515,11 +507,10 @@ const bgStyle = computed(() => ({
             {/* Code Display */}
             <div className="relative">
               <pre
-                className={`p-4 rounded-lg overflow-auto text-xs max-h-[600px] border ${borderColor} ${
-                  isBgDark
+                className={`p-4 rounded-lg overflow-auto text-xs max-h-[600px] border ${borderColor} ${isBgDark
                     ? "bg-gray-800 text-gray-200"
                     : "bg-gray-50 text-gray-800"
-                } font-mono`}
+                  } font-mono`}
               >
                 {getCode(activeTab)}
               </pre>
@@ -536,99 +527,87 @@ const bgStyle = computed(() => ({
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div
-              className={`p-4 rounded-lg ${
-                isBgDark ? "bg-gray-800" : "bg-gray-100"
-              }`}
+              className={`p-4 rounded-lg ${isBgDark ? "bg-gray-800" : "bg-gray-100"
+                }`}
             >
               <div className="text-2xl mb-2">⚡</div>
               <h3 className={`font-semibold mb-1 ${textColor}`}>
                 React, Vue, Svelte
               </h3>
               <p
-                className={`text-sm ${
-                  isBgDark ? "text-gray-400" : "text-gray-600"
-                }`}
+                className={`text-sm ${isBgDark ? "text-gray-400" : "text-gray-600"
+                  }`}
               >
                 Framework-specific components with TypeScript support
               </p>
             </div>
             <div
-              className={`p-4 rounded-lg ${
-                isBgDark ? "bg-gray-800" : "bg-gray-100"
-              }`}
+              className={`p-4 rounded-lg ${isBgDark ? "bg-gray-800" : "bg-gray-100"
+                }`}
             >
               <div className="text-2xl mb-2">🎨</div>
               <h3 className={`font-semibold mb-1 ${textColor}`}>
                 Tailwind CSS
               </h3>
               <p
-                className={`text-sm ${
-                  isBgDark ? "text-gray-400" : "text-gray-600"
-                }`}
+                className={`text-sm ${isBgDark ? "text-gray-400" : "text-gray-600"
+                  }`}
               >
                 Ready-to-use Tailwind classes and arbitrary values
               </p>
             </div>
             <div
-              className={`p-4 rounded-lg ${
-                isBgDark ? "bg-gray-800" : "bg-gray-100"
-              }`}
+              className={`p-4 rounded-lg ${isBgDark ? "bg-gray-800" : "bg-gray-100"
+                }`}
             >
               <div className="text-2xl mb-2">📐</div>
               <h3 className={`font-semibold mb-1 ${textColor}`}>SVG & PNG</h3>
               <p
-                className={`text-sm ${
-                  isBgDark ? "text-gray-400" : "text-gray-600"
-                }`}
+                className={`text-sm ${isBgDark ? "text-gray-400" : "text-gray-600"
+                  }`}
               >
                 Optimized SVG or custom dimensions PNG export
               </p>
             </div>
             <div
-              className={`p-4 rounded-lg ${
-                isBgDark ? "bg-gray-800" : "bg-gray-100"
-              }`}
+              className={`p-4 rounded-lg ${isBgDark ? "bg-gray-800" : "bg-gray-100"
+                }`}
             >
               <div className="text-2xl mb-2">📋</div>
               <h3 className={`font-semibold mb-1 ${textColor}`}>JSON Export</h3>
               <p
-                className={`text-sm ${
-                  isBgDark ? "text-gray-400" : "text-gray-600"
-                }`}
+                className={`text-sm ${isBgDark ? "text-gray-400" : "text-gray-600"
+                  }`}
               >
                 Full pattern configuration for API integration
               </p>
             </div>
             <div
-              className={`p-4 rounded-lg ${
-                isBgDark ? "bg-gray-800" : "bg-gray-100"
-              }`}
+              className={`p-4 rounded-lg ${isBgDark ? "bg-gray-800" : "bg-gray-100"
+                }`}
             >
               <div className="text-2xl mb-2">🔧</div>
               <h3 className={`font-semibold mb-1 ${textColor}`}>
                 Best Practices
               </h3>
               <p
-                className={`text-sm ${
-                  isBgDark ? "text-gray-400" : "text-gray-600"
-                }`}
+                className={`text-sm ${isBgDark ? "text-gray-400" : "text-gray-600"
+                  }`}
               >
                 Production-ready code following framework conventions
               </p>
             </div>
             <div
-              className={`p-4 rounded-lg ${
-                isBgDark ? "bg-gray-800" : "bg-gray-100"
-              }`}
+              className={`p-4 rounded-lg ${isBgDark ? "bg-gray-800" : "bg-gray-100"
+                }`}
             >
               <div className="text-2xl mb-2">🖼️</div>
               <h3 className={`font-semibold mb-1 ${textColor}`}>
                 Custom Dimensions
               </h3>
               <p
-                className={`text-sm ${
-                  isBgDark ? "text-gray-400" : "text-gray-600"
-                }`}
+                className={`text-sm ${isBgDark ? "text-gray-400" : "text-gray-600"
+                  }`}
               >
                 Export PNG at any resolution for any device
               </p>

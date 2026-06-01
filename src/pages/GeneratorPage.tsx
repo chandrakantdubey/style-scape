@@ -180,22 +180,20 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
                 Pattern Generator
               </h1>
               <p
-                className={`text-sm mt-1 ${
-                  isBgDark ? "text-gray-400" : "text-gray-600"
-                }`}
+                className={`text-sm mt-1 ${isBgDark ? "text-gray-400" : "text-gray-600"
+                  }`}
               >
                 Create custom patterns with your color palette
               </p>
             </div>
             <button
               onClick={() => navigate("/")}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                isBgDark
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${isBgDark
                   ? "bg-gray-800 hover:bg-gray-700 text-white"
                   : "bg-gray-200 hover:bg-gray-300 text-gray-900"
-              }`}
+                }`}
             >
-              ← Back
+              Back
             </button>
           </div>
         </div>
@@ -231,16 +229,14 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
                 {colors.length < 5 && (
                   <button
                     onClick={addColor}
-                    className={`w-24 h-24 rounded-md flex items-center justify-center border-2 border-dashed transition-colors ${
-                      isBgDark
+                    className={`w-24 h-24 rounded-md flex items-center justify-center border-2 border-dashed transition-colors ${isBgDark
                         ? "border-gray-600 hover:bg-gray-700"
                         : "border-gray-300 hover:bg-gray-200"
-                    }`}
+                      }`}
                   >
                     <span
-                      className={`text-3xl font-light ${
-                        isBgDark ? "text-gray-500" : "text-gray-400"
-                      }`}
+                      className={`text-3xl font-light ${isBgDark ? "text-gray-500" : "text-gray-400"
+                        }`}
                     >
                       +
                     </span>
@@ -248,9 +244,8 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
                 )}
               </div>
               <p
-                className={`mt-3 text-sm ${
-                  isBgDark ? "text-gray-400" : "text-gray-600"
-                }`}
+                className={`mt-3 text-sm ${isBgDark ? "text-gray-400" : "text-gray-600"
+                  }`}
               >
                 Add 2-5 colors to create your custom palette. The generator will
                 use these colors to create patterns.
@@ -266,13 +261,12 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
                     <button
                       key={category}
                       onClick={() => setSelectedCategory(category)}
-                      className={`px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                        selectedCategory === category
+                      className={`px-3 py-2 text-sm font-medium rounded-lg transition-all ${selectedCategory === category
                           ? "bg-indigo-600 text-white shadow-lg scale-105"
                           : isBgDark
-                          ? "bg-gray-800 hover:bg-gray-700 text-gray-200"
-                          : "bg-white hover:bg-gray-100 text-gray-700"
-                      }`}
+                            ? "bg-gray-800 hover:bg-gray-700 text-gray-200"
+                            : "bg-white hover:bg-gray-100 text-gray-700"
+                        }`}
                     >
                       {category}
                     </button>
@@ -315,9 +309,8 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
                 )}
               </button>
               <div
-                className={`text-xs text-center ${
-                  isBgDark ? "text-gray-400" : "text-gray-600"
-                }`}
+                className={`text-xs text-center ${isBgDark ? "text-gray-400" : "text-gray-600"
+                  }`}
               >
                 Generate 10 custom {selectedCategory.toLowerCase()} patterns using your color palette
               </div>
@@ -353,9 +346,8 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
               Creating your patterns...
             </p>
             <p
-              className={`text-sm ${
-                isBgDark ? "text-gray-400" : "text-gray-600"
-              }`}
+              className={`text-sm ${isBgDark ? "text-gray-400" : "text-gray-600"
+                }`}
             >
               This may take a few seconds
             </p>
@@ -372,11 +364,10 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
                   <button
                     key={cat}
                     onClick={() => setActiveCategory(cat)}
-                    className={`px-4 py-2 text-sm font-medium rounded-full transition-all ${
-                      activeCategory === cat
+                    className={`px-4 py-2 text-sm font-medium rounded-full transition-all ${activeCategory === cat
                         ? "bg-indigo-600 text-white shadow-lg scale-105"
                         : categoryBtnBase
-                    }`}
+                      }`}
                   >
                     {cat}
                   </button>
@@ -387,11 +378,10 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
                   <button
                     key={theme}
                     onClick={() => setActiveThemeFilter(theme)}
-                    className={`px-4 py-2 text-xs font-semibold rounded-full transition-all ${
-                      activeThemeFilter === theme
+                    className={`px-4 py-2 text-xs font-semibold rounded-full transition-all ${activeThemeFilter === theme
                         ? "bg-gray-700 text-white scale-105"
                         : themeBtnBase
-                    }`}
+                      }`}
                   >
                     {theme}
                   </button>
