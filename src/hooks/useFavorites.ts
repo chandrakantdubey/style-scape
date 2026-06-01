@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-const STORAGE_KEY = 'patterncraft_favorites';
+const STORAGE_KEY = 'stylescape_favorites';
 
 export function useFavorites(): [string[], (id: string) => void] {
     const [favorites, setFavorites] = useState<string[]>([]);
@@ -21,13 +21,13 @@ export function useFavorites(): [string[], (id: string) => void] {
             const newFavorites = prevFavorites.includes(id)
                 ? prevFavorites.filter(favId => favId !== id)
                 : [...prevFavorites, id];
-            
+
             try {
                 window.localStorage.setItem(STORAGE_KEY, JSON.stringify(newFavorites));
             } catch (error) {
                 console.error("Failed to save favorites to localStorage", error);
             }
-            
+
             return newFavorites;
         });
     }, []);
