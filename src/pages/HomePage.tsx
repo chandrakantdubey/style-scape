@@ -56,13 +56,35 @@ const HomePage: React.FC<HomePageProps> = ({
   const handleCategoryClick = useCallback((category: string) => {
     setActiveCategory(category);
 
+    // Clear search term and reset theme filter when switching tabs/categories
+    setSearchTerm("");
+    saveSessionState("stylescape:home-search", "");
+    setActiveThemeFilter("All");
+    saveSessionState("stylescape:home-theme", "All");
+
     // Skip lazy loading for special categories
     if (category === "Favourites" || category === "User Created" || !isActiveCategory(category)) {
+      setTimeout(() => {
+        const matchingPresets = allPresets.filter(p => {
+          if (category === "Favourites") return favorites.includes(p.id);
+          if (category === "User Created") return userCreatedPresets.some(ucp => ucp.id === p.id);
+          return p.category === category;
+        });
+        if (matchingPresets.length > 0) {
+          onPreview(matchingPresets[0]);
+        }
+      }, 50);
       return;
     }
 
     // Check if category is already generated
     if (generatedCategories.has(category)) {
+      setTimeout(() => {
+        const matchingPresets = allPresets.filter(p => p.category === category);
+        if (matchingPresets.length > 0) {
+          onPreview(matchingPresets[0]);
+        }
+      }, 50);
       return;
     }
 
@@ -99,8 +121,13 @@ const HomePage: React.FC<HomePageProps> = ({
         newSet.delete(category);
         return newSet;
       });
+
+      // Automatically preview the first generated pattern
+      if (newPatterns.length > 0) {
+        onPreview(newPatterns[0]);
+      }
     }, 100);
-  }, [generatedCategories, setActiveCategory]);
+  }, [generatedCategories, setActiveCategory, setSearchTerm, setActiveThemeFilter, allPresets, favorites, userCreatedPresets, onPreview]);
 
   const filteredPresets = useMemo(() => {
     return allPresets.filter((p) => {

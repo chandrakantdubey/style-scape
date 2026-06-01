@@ -4,7 +4,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import { renderSVG } from "./render/svgRenderer";
 import { svgToDataUrl } from "./render/svgUtils";
 import { getAverageLuminance } from "./utils/colorAnalyzer";
-import { LayerType } from "./state/types";
 import type { Preset } from "./state/types";
 import { presets } from "./presets";
 import { isActiveCategory } from "./presets/catalog";
@@ -15,7 +14,6 @@ import {
 } from "./hooks/useKeyboardShortcuts";
 
 import useStore, { USER_PRESETS_UPDATED_EVENT } from "./state/store";
-import HelpWidget from "./components/HelpWidget";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const GeneratorPage = lazy(() => import("./pages/GeneratorPage"));
@@ -98,34 +96,10 @@ const App: React.FC = () => {
 
   // Initialize with default background
   useEffect(() => {
-    const initialPreset: Preset = {
-      id: "initial-bg",
-      name: "Initial Background",
-      category: "Gradients",
-      theme: "dark",
-      canvas: { width: 1920, height: 1080, background: "#030712" },
-      layers: [
-        {
-          id: "layer-initial-1",
-          name: "Initial Gradient",
-          type: LayerType.GRADIENT,
-          visible: true,
-          opacity: 0.8,
-          blendMode: "overlay",
-          gradientType: "radial",
-          angle: 145,
-          stops: [
-            { id: "s1", color: "#4f46e5", offset: 0 },
-            { id: "s2", color: "#1e1b4b", offset: 100 },
-          ],
-          cx: 20,
-          cy: 30,
-          r: 70,
-        },
-      ],
-    };
-    applyPreview(initialPreset);
-  }, [applyPreview]);
+    if (allPresets.length > 0) {
+      applyPreview(allPresets[0]);
+    }
+  }, [applyPreview, allPresets]);
 
   // Global keyboard shortcuts
   useKeyboardShortcuts([
@@ -135,14 +109,6 @@ const App: React.FC = () => {
         'input[type="search"]'
       ) as HTMLInputElement;
       searchInput?.focus();
-    }),
-    commonShortcuts.help(() => {
-      // Dispatch a custom event to open the help modal
-      const event = new KeyboardEvent("keydown", {
-        key: "?",
-        shiftKey: true,
-      });
-      window.dispatchEvent(event);
     }),
     commonShortcuts.arrowLeft(cycleBackgroundPrev),
     commonShortcuts.arrowRight(cycleBackgroundNext),
@@ -195,7 +161,49 @@ const App: React.FC = () => {
           </Routes>
         </Suspense>
 
-        <HelpWidget isBgDark={isBgDark} />
+        {/* Floating Background Cycle Widget */}
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 p-2 rounded-full backdrop-blur-md border ${
+          isBgDark
+            ? "bg-gray-950/85 border-white/10 text-white shadow-black/40"
+            : "bg-white/85 border-gray-200 text-gray-800 shadow-gray-200/40"
+        } shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105`}>
+          {/* Left Arrow Button */}
+          <button
+            onClick={cycleBackgroundPrev}
+            className={`p-2 rounded-full transition-colors ${
+              isBgDark
+                ? "hover:bg-white/10 text-gray-300 hover:text-white"
+                : "hover:bg-black/5 text-gray-600 hover:text-gray-900"
+            }`}
+            title="Previous Background Pattern (Arrow Left)"
+            aria-label="Previous background"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          {/* Current Preset Info */}
+          <div className="px-2 text-xs font-semibold select-none max-w-[150px] truncate text-center">
+            {allPresets[currentBgIndex]?.name || "Initial Background"}
+          </div>
+
+          {/* Right Arrow Button */}
+          <button
+            onClick={cycleBackgroundNext}
+            className={`p-2 rounded-full transition-colors ${
+              isBgDark
+                ? "hover:bg-white/10 text-gray-300 hover:text-white"
+                : "hover:bg-black/5 text-gray-600 hover:text-gray-900"
+            }`}
+            title="Next Background Pattern (Arrow Right)"
+            aria-label="Next background"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
       </div>
     </BrowserRouter>
   );

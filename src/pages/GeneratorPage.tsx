@@ -82,6 +82,8 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
   const handleGenerate = useCallback(() => {
     setIsGenerating(true);
     setGeneratedPatterns([]);
+    setActiveCategory("All");
+    setActiveThemeFilter("All");
 
     setTimeout(() => {
       const userColors = colors.map((c) => c.value);
@@ -103,7 +105,7 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
       // Only generate for selected category
       themesToGenerate.forEach((theme) => {
         const generator = generatorMap[selectedCategory];
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 5; i++) {
           const id = `user-generated-${selectedCategory.toLowerCase()}-${theme}-${i}`;
           const seed = id;
           const name = `Generated ${selectedCategory} ${theme} #${i + 1}`;
@@ -133,7 +135,7 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
         onPreview(newPatterns[0]);
       }
     }, 100);
-  }, [addUserCreatedPresets, colors, selectedCategory, onPreview]);
+  }, [addUserCreatedPresets, colors, selectedCategory, onPreview, setActiveCategory, setActiveThemeFilter]);
 
   const filteredPatterns = generatedPatterns.filter((p) => {
     if (activeCategory !== "All" && p.category !== activeCategory) {
@@ -309,7 +311,7 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
                     Generating...
                   </span>
                 ) : (
-                  `Generate 60 ${selectedCategory} Patterns`
+                  `Generate 10 ${selectedCategory} Patterns`
                 )}
               </button>
               <div
@@ -317,7 +319,7 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
                   isBgDark ? "text-gray-400" : "text-gray-600"
                 }`}
               >
-                Generate 60 custom {selectedCategory.toLowerCase()} patterns using your color palette
+                Generate 10 custom {selectedCategory.toLowerCase()} patterns using your color palette
               </div>
             </div>
           </div>
