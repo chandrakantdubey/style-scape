@@ -16,19 +16,19 @@ import {
 } from "./focusedGenerators";
 
 export const ACTIVE_CATEGORIES = [
-  "Gradients",
-  "Waves",
-  "Grid",
-  "Glassmorphism",
-  "Abstract",
-  "Mesh",
-  "Stripes",
-  "Mosaic",
-  "Dots",
-  "Plasma",
-  "Noise",
   "Topo",
   "Bauhaus",
+  "Gradients",
+  "Plasma",
+  "Mosaic",
+  "Waves",
+  "Mesh",
+  "Glassmorphism",
+  "Grid",
+  "Abstract",
+  "Stripes",
+  "Dots",
+  "Noise",
 ] as const satisfies readonly PresetCategory[];
 
 export type ActivePresetCategory = (typeof ACTIVE_CATEGORIES)[number];

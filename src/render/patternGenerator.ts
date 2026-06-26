@@ -16,19 +16,19 @@ export function generatePatternDef(layer: PatternLayer): string {
   
   switch(patternType) {
     case 'dots':
-      patternContent = `<circle cx="${half}" cy="${half}" r="${quarter}" fill="${fg}" />`;
+      patternContent = `<circle cx="${half}" cy="${half}" r="${formatNumber(Math.min(s * 0.18, s / 4))}" fill="${fg}" />`;
       break;
     case 'lines':
-      patternContent = `<path d="M 0,${half} l ${formatNumber(s)},0" stroke-width="${formatNumber(Math.max(1, s / 5))}" stroke="${fg}" />`;
+      patternContent = `<path d="M 0,${half} l ${formatNumber(s)},0" stroke-width="1" stroke="${fg}" />`;
       break;
     case 'squares':
       patternContent = `<rect width="${half}" height="${half}" fill="${fg}" /><rect x="${half}" y="${half}" width="${half}" height="${half}" fill="${fg}" />`;
       break;
     case 'crosses':
-        patternContent = `<path d="M ${quarter} ${half} H ${formatNumber(s * 0.75)} M ${half} ${quarter} V ${formatNumber(s * 0.75)}" stroke-width="${formatNumber(Math.max(1, s / 8))}" stroke="${fg}" fill="none" stroke-linecap="round"/>`;
+        patternContent = `<path d="M ${quarter} ${half} H ${formatNumber(s * 0.75)} M ${half} ${quarter} V ${formatNumber(s * 0.75)}" stroke-width="1" stroke="${fg}" fill="none" stroke-linecap="round"/>`;
         break;
     case 'chevrons':
-        patternContent = `<path d="M 0 ${half} L ${quarter} ${quarter} L ${half} ${half} L ${formatNumber(s * 0.75)} ${quarter} L ${formatNumber(s)} ${half}" stroke-width="${formatNumber(Math.max(1, s / 10))}" stroke="${fg}" fill="none" stroke-linecap="round"/>`;
+        patternContent = `<path d="M 0 ${half} L ${quarter} ${quarter} L ${half} ${half} L ${formatNumber(s * 0.75)} ${quarter} L ${formatNumber(s)} ${half}" stroke-width="1" stroke="${fg}" fill="none" stroke-linecap="round"/>`;
         break;
     case 'triangles':
         patternContent = `<path d="M 0,0 L ${formatNumber(s)},0 L ${half},${formatNumber(s * 0.866)} Z M 0,${formatNumber(s)} L ${formatNumber(s)},${formatNumber(s)} L ${half},${formatNumber(s * 0.134)} Z" fill="${fg}"/>`;

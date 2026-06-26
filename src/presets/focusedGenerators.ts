@@ -446,12 +446,12 @@ export function generateGridPreset(
 
   const scale =
     variant === 0
-      ? random(rng, 6, 10)
+      ? random(rng, 5, 8)
       : variant === 1
-      ? random(rng, 10, 14)
+      ? random(rng, 8, 11)
       : variant === 2
-      ? random(rng, 8, 12)
-      : random(rng, 5, 8);
+      ? random(rng, 6, 9)
+      : random(rng, 4, 7);
 
   const baseAngle = variant === 2 ? 45 : 0;
 
@@ -710,7 +710,7 @@ export function generateStripesPreset(
   const stripeColor = accentColor(palette, theme, variant);
 
   const primaryAngle = variant === 0 ? 0 : variant === 1 ? 90 : 45;
-  const primaryScale = variant === 3 ? random(rng, 8, 14) : random(rng, 6, 12);
+  const primaryScale = variant === 3 ? random(rng, 6, 10) : random(rng, 4, 8);
 
   const layers: Layer[] = [
     gradientLayer(`layer-stripes-bg-${id}`, "Stripes Background", palette, theme, rng, {
