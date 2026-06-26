@@ -14,7 +14,6 @@ interface GeneratorPageProps {
   isBgDark: boolean;
 }
 
-const FILTER_CATEGORIES: ("All" | ActivePresetCategory)[] = ["All", ...ACTIVE_CATEGORIES];
 const THEME_FILTERS: ("All" | "Light" | "Dark")[] = ["All", "Light", "Dark"];
 
 const GeneratorPage: React.FC<GeneratorPageProps> = ({
@@ -34,10 +33,6 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
   );
 
   const { addUserCreatedPresets } = useStore();
-  const [activeCategory, setActiveCategoryState] = useSessionState<string>(
-    "stylescape:generator-filter-category",
-    "All"
-  );
   const [activeThemeFilter, setActiveThemeFilterState] = useSessionState<string>(
     "stylescape:generator-filter-theme",
     "All"
@@ -46,11 +41,9 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
   const setSelectedCategory = (category: ActivePresetCategory) => {
     setSelectedCategoryState(category);
     saveSessionState("stylescape:generator-category", category);
-  };
-
-  const setActiveCategory = (category: string) => {
-    setActiveCategoryState(category);
-    saveSessionState("stylescape:generator-filter-category", category);
+    // Clear stale results from the previous category so the user
+    // doesn't see Gradients while the picker says Glassmorphism.
+    setGeneratedPatterns([]);
   };
 
   const setActiveThemeFilter = (theme: string) => {
@@ -82,7 +75,6 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
   const handleGenerate = useCallback(() => {
     setIsGenerating(true);
     setGeneratedPatterns([]);
-    setActiveCategory("All");
     setActiveThemeFilter("All");
 
     setTimeout(() => {
@@ -135,12 +127,9 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
         onPreview(newPatterns[0]);
       }
     }, 100);
-  }, [addUserCreatedPresets, colors, selectedCategory, onPreview, setActiveCategory, setActiveThemeFilter]);
+  }, [addUserCreatedPresets, colors, selectedCategory, onPreview, setActiveThemeFilter]);
 
   const filteredPatterns = generatedPatterns.filter((p) => {
-    if (activeCategory !== "All" && p.category !== activeCategory) {
-      return false;
-    }
     const themeFilterLower = activeThemeFilter.toLowerCase();
     if (activeThemeFilter !== "All" && p.theme !== themeFilterLower) {
       return false;
@@ -152,9 +141,6 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
   const bgPanel = isBgDark ? "bg-gray-900/80" : "bg-white/80";
   const borderColor = isBgDark ? "border-gray-700" : "border-gray-300";
   const emptyStateBg = isBgDark ? "bg-gray-800/50" : "bg-white/50";
-  const categoryBtnBase = isBgDark
-    ? "bg-gray-800/70 text-gray-200 hover:bg-gray-700"
-    : "bg-white/70 text-gray-700 hover:bg-gray-100";
   const themeBtnBase = isBgDark
     ? "bg-gray-800/50 text-gray-300 hover:bg-gray-700"
     : "bg-white/50 text-gray-600 hover:bg-gray-200";
@@ -357,36 +343,21 @@ const GeneratorPage: React.FC<GeneratorPageProps> = ({
         {/* Results */}
         {generatedPatterns.length > 0 && !isGenerating && (
           <div className="space-y-6">
-            {/* Filters */}
-            <div className="space-y-4">
-              <div className="flex justify-center flex-wrap gap-2">
-                {FILTER_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
-                    className={`px-4 py-2 text-sm font-medium rounded-full transition-all ${activeCategory === cat
-                        ? "bg-indigo-600 text-white shadow-lg scale-105"
-                        : categoryBtnBase
-                      }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-              <div className="flex justify-center flex-wrap gap-2">
-                {THEME_FILTERS.map((theme) => (
-                  <button
-                    key={theme}
-                    onClick={() => setActiveThemeFilter(theme)}
-                    className={`px-4 py-2 text-xs font-semibold rounded-full transition-all ${activeThemeFilter === theme
-                        ? "bg-gray-700 text-white scale-105"
-                        : themeBtnBase
-                      }`}
-                  >
-                    {theme}
-                  </button>
-                ))}
-              </div>
+            {/* Theme filter only — category filter is redundant since the
+                generator emits a single category per run. */}
+            <div className="flex justify-center flex-wrap gap-2">
+              {THEME_FILTERS.map((theme) => (
+                <button
+                  key={theme}
+                  onClick={() => setActiveThemeFilter(theme)}
+                  className={`px-4 py-2 text-xs font-semibold rounded-full transition-all ${activeThemeFilter === theme
+                      ? "bg-gray-700 text-white scale-105"
+                      : themeBtnBase
+                    }`}
+                >
+                  {theme}
+                </button>
+              ))}
             </div>
 
             <p

@@ -1,237 +1,107 @@
-# 🎨 StyleScape
+# StyleScape
 
-**Generate stunning, procedural background patterns with one-click export to CSS, Tailwind, React, Vue, and more.**
+Procedural background pattern generator. Browse a curated library, tweak with a color palette, and export to CSS, SVG, or PNG.
 
-![StyleScape Preview](https://img.shields.io/badge/React-19.1.1-blue) ![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-blue) ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.1.16-blue) ![Zustand](https://img.shields.io/badge/Zustand-5.0.8-orange)
+![React 19](https://img.shields.io/badge/React-19-blue) ![TypeScript](https://img.shields.io/badge/TypeScript-6-blue) ![Vite](https://img.shields.io/badge/Vite-8-purple) ![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-cyan)
 
-## ✨ Features
+## What it does
 
-- **1000+ Procedural Patterns**: Algorithmically generated backgrounds across multiple categories
-- **One-Click Export**: Export to CSS, Tailwind CSS, React, Vue, Svelte, SVG, PNG
-- **Pattern Mixer**: Combine multiple patterns with blend modes
-- **Batch Export**: Download multiple patterns at once
-- **Keyboard Shortcuts**: Full keyboard navigation support
-- **Favorites System**: Save and organize your favorite patterns
-- **User-Created Patterns**: Mix and save your own custom patterns
-- **Responsive Design**: Works perfectly on desktop, tablet, and mobile
-- **Dark/Light Themes**: Automatic theme detection based on background
+- **Eight pattern categories**: Gradients, Waves, Grid, Glassmorphism, Abstract, Mesh, Stripes, Mosaic
+- **Three themes per category**: Light, Dark, Colored
+- **240+ curated presets** in the library, plus "Generate 10 more" on demand
+- **Custom palette generator**: pick 2–5 colors, choose a pattern type, get 10 unique variations
+- **One-click export**: copy to clipboard as CSS, Tailwind, React, Vue, Svelte, or download as SVG / PNG
+- **Favorites + session memory**: bookmark patterns and resume where you left off
+- **Keyboard shortcuts**: navigate the entire app without a mouse
 
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-
-### Installation
+## Quick start
 
 ```bash
-# Clone the repository
-git clone https://github.com/chandrakantdubey/style-scape.git
+git clone <repo-url>
 cd style-scape
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
-
-# Open http://localhost:5173 in your browser
 ```
 
-### Build for Production
+Open `http://localhost:3000`.
 
-```bash
-# Build the project
-npm run build
+## Scripts
 
-# Preview production build
-npm run preview
-```
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Start the Vite dev server |
+| `npm run build` | Type-check and produce a production build in `dist/` |
+| `npm run preview` | Serve the production build locally |
+| `npm run lint` | Run ESLint |
+| `npm test` | Run the test suite once |
+| `npm run test:watch` | Watch mode |
+| `npm run test:coverage` | Generate a coverage report |
 
-## 🎯 Usage
+## How it works
 
-### Basic Pattern Generation
+A `Preset` is a pure value of `{ canvas, layers[] }`. Every layer is one of five primitives:
 
-1. **Browse Patterns**: Explore the pattern library with categories like Gradients, Geometric, Waves, etc.
-2. **Search & Filter**: Use the search bar or category/theme filters to find specific patterns
-3. **Preview**: Click any pattern to preview it as your background
-4. **Export**: Click "View Details" to access export options
+| Layer | Renders | Used by |
+| --- | --- | --- |
+| `GradientLayer` | Linear or radial CSS-style gradient | every category |
+| `BlobLayer` | Closed organic SVG path with controllable chaos | Glassmorphism, Abstract |
+| `WaveLayer` | Sine/spline wave path | Waves, Abstract |
+| `PatternLayer` | Tiled SVG `<pattern>` (dots, lines, hexagons, …) | Grid, Stripes, Mosaic |
+| `ImageLayer` | Embedded `<image>` ref | User imports |
 
-### Creating Custom Patterns
-
-1. **Generator**: Visit `/generator` to create patterns from scratch
-2. **Mixer**: Go to `/mixer` to combine multiple patterns
-3. **Save**: Your mixed patterns are automatically saved to "User Created" category
-
-### Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `?` + `Shift` | Show keyboard shortcuts |
-| `/` | Focus search |
-| `G` | Open generator |
-| `M` | Open pattern mixer |
-| `L` | View library |
-| `F` | Toggle favorite |
-| `E` | Export pattern |
-| `C` | Copy CSS code |
-| `T` | Copy Tailwind code |
-| `Space` | Preview pattern |
-| `Ctrl+S` | Save pattern |
-| `Ctrl+Z` | Undo |
-| `Ctrl+Y` | Redo |
-| `Esc` | Close modal/dialog |
-| `← →` | Navigate patterns |
-| `↑ ↓` | Navigate categories |
-
-## 🏗️ Project Structure
+`renderSVG(state)` walks the layer list and produces a deterministic SVG string. Same input always yields the same output, which lets us bootstrap the curated catalog at build time and reproduce user-generated variations across sessions.
 
 ```
 src/
-├── components/          # Reusable UI components
-│   ├── HelpWidget.tsx   # Keyboard shortcuts help modal
-│   └── Icons.tsx        # Icon components
-├── pages/               # Page components
-│   ├── HomePage.tsx     # Main pattern library
-│   ├── GeneratorPage.tsx# Pattern generator
-│   ├── MixerPage.tsx    # Pattern mixer
-│   └── ...
-├── state/               # State management
-│   ├── store.ts         # Zustand store
-│   └── types.ts         # TypeScript interfaces
-├── hooks/               # Custom React hooks
-│   ├── useFavorites.ts  # Favorites management
-│   └── useKeyboardShortcuts.ts # Keyboard shortcuts
-├── render/              # Rendering utilities
-├── utils/               # Helper functions
-└── presets/             # Pattern presets
+├── App.tsx                      # Routes + global background cycle widget
+├── components/                  # UI primitives (Icons, KeyboardShortcuts)
+├── hooks/                       # useFavorites, useDebounce, useSessionState, …
+├── pages/
+│   ├── HomePage.tsx             # Library browser
+│   ├── GeneratorPage.tsx        # Custom-palette generator
+│   └── PatternDetailPage.tsx    # Single-pattern view + export controls
+├── presets/
+│   ├── catalog.ts               # Category registry + generator map
+│   ├── focusedGenerators.ts     # 8 per-category preset generators
+│   └── index.ts                 # Bootstraps the curated catalog
+├── render/                      # Pure SVG rendering pipeline
+├── state/
+│   ├── store.ts                 # Zustand store with undo/redo
+│   ├── timelineSlice.ts         # Undo/redo helpers (coalesce + bound)
+│   └── types.ts                 # Core type system
+└── utils/
+    ├── colorAnalyzer.ts         # Average-luminance helper for theming
+    └── migrateAppState.ts       # v1 → v2 persisted-state migrator
 ```
 
-## 🛠️ Technology Stack
+## Adding a new pattern category
 
-- **Frontend**: React 19, TypeScript
-- **Styling**: Tailwind CSS 4
-- **State Management**: Zustand
-- **Icons**: Lucide React
-- **Build Tool**: Vite
-- **Pattern Rendering**: SVG-based procedural generation
+1. Add the category name to `PresetCategory` in `src/state/types.ts`.
+2. Write a generator function in `src/presets/focusedGenerators.ts` that returns a `Preset`. It receives `(id, name, theme, isNew, seed, customPalette?)` and must be deterministic given the same `seed`.
+3. Register the generator in `ACTIVE_CATEGORIES` and `generatorMap` in `src/presets/catalog.ts`.
 
-## 📁 API Reference
+The library page, generator page, and category filter all read from `ACTIVE_CATEGORIES` automatically — no UI work needed.
 
-### Core Types
+## Persisted state
 
-```typescript
-interface Preset {
-  id: string;
-  name: string;
-  category: PresetCategory;
-  theme: PresetTheme;
-  canvas: CanvasState;
-  layers: Layer[];
-}
+User data lives in `localStorage`:
 
-interface Layer {
-  id: string;
-  name: string;
-  type: LayerType;
-  visible: boolean;
-  opacity: number;
-  blendMode: string;
-  // ... additional properties based on type
-}
-```
+- `bggen_v1` — the current pattern state (`AppState`)
+- `user_created_presets` — array of user-generated presets
 
-### Key Hooks
+Both are loaded through `migrateAppState` / `migrateUserPresets` in `src/utils/migrateAppState.ts`. The migrator is total (never throws) and stamps a `schemaVersion: 2` field so future format changes can be detected.
 
-- `useFavorites()`: Manage favorite patterns
-- `useKeyboardShortcuts()`: Handle keyboard shortcuts
-- `useStore()`: Access Zustand state
+## Tech stack
 
-## 🎨 Pattern Categories
+- **React 19** + the React Compiler
+- **TypeScript** with strict mode
+- **Vite 8** for dev / build, with Tailwind CSS 4 via its Vite plugin
+- **Zustand 5** + Immer for state, with a small undo/redo timeline layered on top
+- **react-router 7** for client-side routing
+- **react-colorful** for the color pickers
+- **seedrandom** for deterministic generation
+- **Vitest** + `@testing-library/react` for tests
 
-- **Gradients**: Linear and radial gradients
-- **Geometric**: Shapes, patterns, tessellations
-- **Waves**: Sine wave patterns
-- **Abstract**: Organic, flowing shapes
-- **Metallic**: Chrome, gold effects
-- **Glassmorphism**: Frosted glass effects
-- **Texture**: Noise, grain patterns
-- **Particles**: Animated dot fields
-- **Mesh**: Multi-point gradients
-- **Stripe**: Various stripe patterns
+## License
 
-## 🚀 Roadmap
-
-### Phase 1: Enhanced Patterns (High Priority)
-- ✅ Noise/Grain texture effects
-- ✅ Organic flowing shapes
-- ✅ Mesh gradients
-- ✅ Perlin noise backgrounds
-- ✅ Particle systems
-- ✅ Striped patterns
-- ✅ Geometric mosaics
-
-### Phase 2: Advanced Features
-- ✅ Pattern mixer with blend modes
-- 🔄 Animation controls
-- 🔄 Color palette generator
-- ✅ Preset collections (User Created)
-- 🔄 Pattern history tracking
-- 🔄 Comparison mode (side-by-side)
-- ✅ Batch export
-- 🔄 Undo/Redo system
-
-### Phase 3: Developer Tools
-- 🔄 Code playground (live editor)
-- 🔄 Framework component snippets
-- 🔄 Documentation generator
-- 🔄 Performance metrics
-- 🔄 Accessibility checker
-- 🔄 WCAG compliance
-
-### Phase 4: UX Improvements
-- ✅ Keyboard navigation
-- 🔄 Touch gestures (swipe, pinch)
-- 🔄 Right-click context menu
-- 🔄 Interactive onboarding
-- ✅ Responsive preview
-- 🔄 Tooltips & guided tours
-
-## 🤝 Contributing
-
-We welcome contributions! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
-### Development Guidelines
-
-- Follow TypeScript best practices
-- Add proper type definitions
-- Write descriptive commit messages
-- Test keyboard shortcuts and responsive design
-- Ensure accessibility compliance
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Built with React, TypeScript, and Tailwind CSS
-- Pattern generation algorithms inspired by modern design trends
-- Icons provided by Lucide React
-- Special thanks to the open-source community
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/chandrakantdubey/style-scape/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/chandrakantdubey/style-scape/discussions)
-
----
-
-**Made with ❤️ by [Chandra Kant Dubey](https://github.com/chandrakantdubey)**
+MIT.

@@ -242,12 +242,16 @@ const bgStyle = computed(() => ({
           2
         );
 
+      case "png":
+        return "";
+
       default:
         return "";
     }
   };
 
   const handleCopy = (format: ExportFormat) => {
+    if (format === "png") return; // PNG has no copyable code.
     navigator.clipboard.writeText(getCode(format));
     setCopiedFormat(format);
     setTimeout(() => setCopiedFormat(null), 2000);
@@ -379,10 +383,10 @@ const bgStyle = computed(() => ({
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           {/* Preview */}
           <div
-            className={`${bgPanel} backdrop-blur-lg rounded-xl border ${borderColor} p-6`}
+            className={`${bgPanel} backdrop-blur-lg rounded-xl border ${borderColor} p-6 lg:sticky lg:top-24 self-start`}
           >
             <h2 className={`text-xl font-bold mb-4 ${textColor}`}>Preview</h2>
             <div className="aspect-video rounded-lg overflow-hidden shadow-lg">
@@ -416,7 +420,8 @@ const bgStyle = computed(() => ({
               <h2 className={`text-xl font-bold ${textColor}`}>Export Code</h2>
               <button
                 onClick={() => handleCopy(activeTab)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${copiedFormat === activeTab
+                disabled={activeTab === "png"}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${copiedFormat === activeTab
                     ? "bg-green-600 text-white"
                     : isBgDark
                       ? "bg-gray-800 hover:bg-gray-700 text-white"
@@ -506,14 +511,36 @@ const bgStyle = computed(() => ({
 
             {/* Code Display */}
             <div className="relative">
-              <pre
-                className={`p-4 rounded-lg overflow-auto text-xs max-h-[600px] border ${borderColor} ${isBgDark
-                    ? "bg-gray-800 text-gray-200"
-                    : "bg-gray-50 text-gray-800"
-                  } font-mono`}
-              >
-                {getCode(activeTab)}
-              </pre>
+              {activeTab === "png" ? (
+                <div
+                  className={`rounded-lg border ${borderColor} p-6 text-center ${
+                    isBgDark
+                      ? "bg-gray-800 text-gray-300"
+                      : "bg-gray-50 text-gray-700"
+                  }`}
+                >
+                  <div className="text-3xl mb-2">🖼️</div>
+                  <p className="font-medium mb-1">
+                    PNG is a binary format
+                  </p>
+                  <p className="text-sm opacity-80">
+                    Choose your dimensions above and click{" "}
+                    <strong>Download PNG</strong> to save the file. There's no
+                    code to copy for PNG export.
+                  </p>
+                </div>
+              ) : (
+                <pre
+                  className={`p-4 rounded-lg overflow-auto text-xs max-h-[560px] border ${borderColor} ${
+                    isBgDark
+                      ? "bg-gray-800 text-gray-200"
+                      : "bg-gray-50 text-gray-800"
+                  } font-mono whitespace-pre`}
+                  style={{ overscrollBehavior: "contain" }}
+                >
+                  <code className="block">{getCode(activeTab)}</code>
+                </pre>
+              )}
             </div>
           </div>
         </div>

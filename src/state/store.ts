@@ -4,6 +4,14 @@ import { produce } from 'immer';
 import type { AppState, Layer, GradientLayer, Preset } from './types';
 import { LayerType } from './types';
 import { subscribeWithSelector } from 'zustand/middleware';
+import {
+  commit as tlCommit,
+  redo as tlRedo,
+  undo as tlUndo,
+  type TimelineCarrier,
+  type TimelineFrame,
+} from './timelineSlice';
+import { migrateAppState, migrateUserPresets } from '../utils/migrateAppState';
 
 const LOCAL_STORAGE_KEY = 'bggen_v1';
 const USER_PRESETS_KEY = 'user_created_presets';
@@ -11,9 +19,9 @@ export const USER_PRESETS_UPDATED_EVENT = 'stylescape:user-presets-updated';
 const USER_PRESET_LIMIT = 240;
 
 interface TemporalState {
-  past: AppState[];
+  past: TimelineFrame[];
   present: AppState;
-  future: AppState[];
+  future: TimelineFrame[];
   undo: () => void;
   redo: () => void;
   addLayer: (type: LayerType) => void;
@@ -22,6 +30,11 @@ interface TemporalState {
   selectLayer: (id: string | null) => void;
   reorderLayer: (id: string, direction: 'up' | 'down') => void;
   updateState: (newState: Partial<AppState>) => void;
+  /**
+   * Replace the present with a full preset snapshot, committing a
+   * single labeled frame.
+   */
+  loadPreset: (next: AppState, label?: string) => void;
   addUserCreatedPreset: (preset: Preset) => void;
   addUserCreatedPresets: (presets: Preset[]) => void;
   getUserCreatedPresets: () => Preset[];
@@ -44,7 +57,11 @@ const getInitialState = (): AppState => {
   try {
     const item = window.localStorage.getItem(LOCAL_STORAGE_KEY);
     if (item) {
-      return JSON.parse(item);
+      const parsed = JSON.parse(item);
+      // Route through the v1→v2 migrator. The migrator is total: on
+      // malformed input it returns a default state + sets the
+      // `migration:failed` marker for the App banner.
+      return migrateAppState(parsed);
     }
   } catch (error) {
     console.error("Error reading from localStorage", error);
@@ -80,7 +97,11 @@ const useStore = create<TemporalState>()(
     const getUserCreatedPresets = (): Preset[] => {
       try {
         const item = window.localStorage.getItem(USER_PRESETS_KEY);
-        return item ? normalizeUserPresets(JSON.parse(item)) : [];
+        if (!item) return [];
+        const parsed = JSON.parse(item);
+        // Migrate element-wise so unknown layer types are stripped
+        // but the rest of each preset survives (Requirement 12.5).
+        return normalizeUserPresets(migrateUserPresets(parsed));
       } catch (error) {
         console.error("Error reading user presets from localStorage", error);
         return [];
@@ -97,14 +118,24 @@ const useStore = create<TemporalState>()(
       }
     };
 
-    const setStateWithHistory = (fn: (state: AppState) => AppState) => {
+    const setStateWithHistory = (
+      fn: (state: AppState) => AppState,
+      label: string = "edit"
+    ) => {
       set(produce<TemporalState>(draft => {
           const newPresent = fn(draft.present);
-          if (JSON.stringify(newPresent) !== JSON.stringify(draft.present)) {
-              draft.past.push(draft.present);
-              draft.future = [];
-              draft.present = newPresent;
-          }
+          // Delegates to the unified timeline helpers: coalesces same-label
+          // commits within COALESCE_MS, FIFO-evicts at MAX_FRAMES, no-ops
+          // when state is structurally unchanged.
+          const carrier: TimelineCarrier = {
+            past: draft.past,
+            present: draft.present,
+            future: draft.future,
+          };
+          tlCommit(carrier, newPresent, label, "command");
+          draft.past = carrier.past;
+          draft.present = carrier.present;
+          draft.future = carrier.future;
       }));
     };
 
@@ -114,20 +145,28 @@ const useStore = create<TemporalState>()(
       future: [],
       undo: () => {
         set(produce<TemporalState>(draft => {
-          if (draft.past.length > 0) {
-            const previous = draft.past.pop()!;
-            draft.future.unshift(draft.present);
-            draft.present = previous;
-          }
+          const carrier: TimelineCarrier = {
+            past: draft.past,
+            present: draft.present,
+            future: draft.future,
+          };
+          tlUndo(carrier);
+          draft.past = carrier.past;
+          draft.present = carrier.present;
+          draft.future = carrier.future;
         }));
       },
       redo: () => {
         set(produce<TemporalState>(draft => {
-          if (draft.future.length > 0) {
-            const next = draft.future.shift()!;
-            draft.past.push(draft.present);
-            draft.present = next;
-          }
+          const carrier: TimelineCarrier = {
+            past: draft.past,
+            present: draft.present,
+            future: draft.future,
+          };
+          tlRedo(carrier);
+          draft.past = carrier.past;
+          draft.present = carrier.present;
+          draft.future = carrier.future;
         }));
       },
       addLayer: (type: LayerType) => {
@@ -210,6 +249,19 @@ const useStore = create<TemporalState>()(
       },
       updateState: (newState: Partial<AppState>) => {
           setStateWithHistory(state => ({ ...state, ...newState }));
+      },
+      loadPreset: (next: AppState, label: string = "load-preset") => {
+        set(produce<TemporalState>(draft => {
+          const carrier: TimelineCarrier = {
+            past: draft.past,
+            present: draft.present,
+            future: draft.future,
+          };
+          tlCommit(carrier, next, label, "snapshot");
+          draft.past = carrier.past;
+          draft.present = carrier.present;
+          draft.future = carrier.future;
+        }));
       },
       addUserCreatedPreset: (preset: Preset) => {
         setUserCreatedPresets([...getUserCreatedPresets(), preset]);

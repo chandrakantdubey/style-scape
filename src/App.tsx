@@ -112,6 +112,8 @@ const App: React.FC = () => {
     }),
     commonShortcuts.arrowLeft(cycleBackgroundPrev),
     commonShortcuts.arrowRight(cycleBackgroundNext),
+    commonShortcuts.undo(() => useStore.getState().undo()),
+    commonShortcuts.redo(() => useStore.getState().redo()),
   ]);
 
   return (

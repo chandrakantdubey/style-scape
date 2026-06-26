@@ -26,10 +26,9 @@ const HomePage: React.FC<HomePageProps> = ({
 }) => {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategoryState] = useSessionState("stylescape:home-category", "Gradients");
-  const [activeThemeFilter, setActiveThemeFilterState] = useSessionState("stylescape:home-theme", "All");
+  const [activeThemeFilter, setActiveThemeFilterState] = useSessionState("stylescape:home-theme", "Light");
   const [searchTerm, setSearchTermState] = useSessionState("stylescape:home-search", "");
   const [loadingCategories, setLoadingCategories] = useState<Set<string>>(new Set());
-  const [generatedCategories, setGeneratedCategories] = useState<Set<string>>(new Set());
   const [runtimeGeneratedPresets, setRuntimeGeneratedPresets] = useState<Preset[]>([]);
 
   const setActiveCategory = useCallback((category: string) => {
@@ -56,78 +55,61 @@ const HomePage: React.FC<HomePageProps> = ({
   const handleCategoryClick = useCallback((category: string) => {
     setActiveCategory(category);
 
-    // Clear search term and reset theme filter when switching tabs/categories
+    // Clear search term and reset theme filter when switching tabs/categories.
+    // Reset runtime-generated patterns so each category starts from the
+    // curated catalog and counts don't accumulate across clicks.
     setSearchTerm("");
     saveSessionState("stylescape:home-search", "");
-    setActiveThemeFilter("All");
-    saveSessionState("stylescape:home-theme", "All");
+    setActiveThemeFilter("Light");
+    saveSessionState("stylescape:home-theme", "Light");
+    setRuntimeGeneratedPresets([]);
 
-    // Skip lazy loading for special categories
-    if (category === "Favourites" || category === "User Created" || !isActiveCategory(category)) {
-      setTimeout(() => {
-        const matchingPresets = allPresets.filter(p => {
-          if (category === "Favourites") return favorites.includes(p.id);
-          if (category === "User Created") return userCreatedPresets.some(ucp => ucp.id === p.id);
-          return p.category === category;
-        });
-        if (matchingPresets.length > 0) {
-          onPreview(matchingPresets[0]);
-        }
-      }, 50);
-      return;
-    }
-
-    // Check if category is already generated
-    if (generatedCategories.has(category)) {
-      setTimeout(() => {
-        const matchingPresets = allPresets.filter(p => p.category === category);
-        if (matchingPresets.length > 0) {
-          onPreview(matchingPresets[0]);
-        }
-      }, 50);
-      return;
-    }
-
-    // Start loading
-    setLoadingCategories(prev => new Set(prev).add(category));
-
-    // Generate patterns for this category
+    // Auto-preview the first matching preset from the curated catalog.
     setTimeout(() => {
-      const newPatterns: Preset[] = [];
-      const themesToGenerate: PresetTheme[] = ["light", "dark", "colored"];
-
-      themesToGenerate.forEach((theme) => {
-        const generator = generatorMap[category];
-        // Generate 30 patterns per theme (90 total per category)
-        for (let i = 0; i < 30; i++) {
-          const id = `${category.toLowerCase().replace(" ", "")}-${theme}-${i}`;
-          const name = `${category} ${theme.charAt(0).toUpperCase() + theme.slice(1)} #${i + 1}`;
-          const seed = id;
-          const preset = generator(id, name, theme, false, seed);
-          newPatterns.push(preset);
-        }
+      const matchingPresets = presets.filter((p) => {
+        if (category === "Favourites") return favorites.includes(p.id);
+        if (category === "User Created") return userCreatedPresets.some((ucp) => ucp.id === p.id);
+        return p.category === category;
       });
+      if (matchingPresets.length > 0) {
+        onPreview(matchingPresets[0]);
+      }
+    }, 50);
+  }, [setActiveCategory, setSearchTerm, setActiveThemeFilter, presets, favorites, userCreatedPresets, onPreview]);
 
-      setRuntimeGeneratedPresets(prev => {
-        const byId = new Map(prev.map((preset) => [preset.id, preset]));
-        newPatterns.forEach((preset) => byId.set(preset.id, preset));
+  // Explicit "generate more variations" action. Adds 10 per click for
+  // the active category + theme, capped at 50.
+  const handleGenerateMore = useCallback(() => {
+    if (!isActiveCategory(activeCategory)) return;
+    const generator = generatorMap[activeCategory as keyof typeof generatorMap];
+    if (!generator) return;
+    const theme = activeThemeFilter.toLowerCase() as PresetTheme;
+    setLoadingCategories((prev) => new Set(prev).add(activeCategory));
+    setTimeout(() => {
+      const existing = runtimeGeneratedPresets.filter(
+        (p) => p.category === activeCategory && p.theme === theme
+      ).length;
+      const newPatterns: Preset[] = [];
+      const TARGET = Math.min(existing + 10, 50);
+      for (let i = existing; i < TARGET; i++) {
+        const id = `${activeCategory.toLowerCase().replace(" ", "")}-${theme}-extra-${i}`;
+        const name = `${activeCategory} ${theme.charAt(0).toUpperCase() + theme.slice(1)} #${i + 1}`;
+        const preset = generator(id, name, theme, false, id);
+        newPatterns.push(preset);
+      }
+      setRuntimeGeneratedPresets((prev) => {
+        const byId = new Map(prev.map((p) => [p.id, p]));
+        newPatterns.forEach((p) => byId.set(p.id, p));
         return Array.from(byId.values());
       });
-
-      // Mark category as generated
-      setGeneratedCategories(prev => new Set(prev).add(category));
-      setLoadingCategories(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(category);
-        return newSet;
+      setLoadingCategories((prev) => {
+        const next = new Set(prev);
+        next.delete(activeCategory);
+        return next;
       });
-
-      // Automatically preview the first generated pattern
-      if (newPatterns.length > 0) {
-        onPreview(newPatterns[0]);
-      }
+      if (newPatterns.length > 0) onPreview(newPatterns[0]);
     }, 100);
-  }, [generatedCategories, setActiveCategory, setSearchTerm, setActiveThemeFilter, allPresets, favorites, userCreatedPresets, onPreview]);
+  }, [activeCategory, activeThemeFilter, runtimeGeneratedPresets, onPreview]);
 
   const filteredPresets = useMemo(() => {
     return allPresets.filter((p) => {
@@ -141,7 +123,7 @@ const HomePage: React.FC<HomePageProps> = ({
       }
 
       const themeFilterLower = activeThemeFilter.toLowerCase();
-      if (activeThemeFilter !== "All" && p.theme !== themeFilterLower) {
+      if (p.theme !== themeFilterLower) {
         return false;
       }
 
@@ -157,7 +139,7 @@ const HomePage: React.FC<HomePageProps> = ({
   }, [activeCategory, activeThemeFilter, searchTerm, favorites, allPresets, userCreatedPresets]);
 
   const categories = [...ACTIVE_CATEGORIES, "Favourites", "User Created"];
-  const themeFilters = ["All", "Light", "Dark", "Colored"];
+  const themeFilters = ["Light", "Dark"];
 
   const textColor = isBgDark ? "text-white" : "text-gray-900";
   const subtitleColor = isBgDark ? "text-gray-300" : "text-gray-600";
@@ -195,7 +177,7 @@ const HomePage: React.FC<HomePageProps> = ({
                 StyleScape
               </span>
             </a>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center gap-1 sm:gap-2">
               <a
                 href="https://github.com"
                 target="_blank"
@@ -432,6 +414,20 @@ const HomePage: React.FC<HomePageProps> = ({
         <p className={`text-center text-sm font-medium mb-6 ${subtitleColor}`}>
           Showing {filteredPresets.length} pattern
           {filteredPresets.length !== 1 ? "s" : ""}
+          {isActiveCategory(activeCategory) && filteredPresets.length > 0 && (
+            <button
+              type="button"
+              onClick={handleGenerateMore}
+              disabled={loadingCategories.has(activeCategory)}
+              className={`ml-3 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition-all disabled:opacity-50 ${
+                isBgDark
+                  ? "bg-indigo-500/20 text-indigo-200 hover:bg-indigo-500/30"
+                  : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+              }`}
+            >
+              {loadingCategories.has(activeCategory) ? "Generating..." : "+ Generate 10 more"}
+            </button>
+          )}
         </p>
 
         {/* Pattern Grid */}
@@ -514,7 +510,7 @@ const HomePage: React.FC<HomePageProps> = ({
             <button
               onClick={() => {
                 setActiveCategory("Gradients");
-                setActiveThemeFilter("All");
+                setActiveThemeFilter("Light");
                 setSearchTerm("");
               }}
               className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
