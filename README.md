@@ -19,8 +19,9 @@ The active application lives in **studio/**. The previous source remains in **sr
 - Three deterministic vector fields: warped curl, multi-vortex orbit, and noise-isoline flow
 - GPU-assisted rendering, a Canvas 2D fallback, palettes, blend modes, interference, grain, and animation
 - Seeded variations with locked parameter groups, undo/redo, local saves, and validated scene JSON
+- Reorderable vector-layer stack with visibility, opacity, colors, detail, and blend controls
 - Aspect-ratio previews, text-safe-area overlay, PNG exports up to 4K, and short browser-recorded WebM
-- Generated React, Vue 3, and Angular components, plus a self-contained offline HTML export
+- Editable SVG output, generated React/Vue/Angular components, and self-contained offline HTML
 - Local-first access; optional Clerk sign-in, private cloud projects, 30 retained revisions, and revocable public snapshots
 
 ## Full-stack structure
@@ -31,9 +32,9 @@ The active application lives in **studio/**. The previous source remains in **sr
 - **services/api-zod/** contains request/response validation.
 - **services/api/src/middlewares/clerkProxyMiddleware.ts** handles Clerk's same-origin authentication proxy.
 
-Start the web and API workflows separately. Provision PostgreSQL and configure Clerk and database secrets through the deployment environment (never commit credentials). Apply the schema with **pnpm db:push** before starting the API. The API must be served under the same origin at **/api** so browser cookies are not shared with an unrelated host.
+The Vercel function in **api/[...path].ts** serves the Express API on the same origin as the studio. Configure **DATABASE_URL**, **CLERK_PUBLISHABLE_KEY**, and **CLERK_SECRET_KEY** in the host's secret manager (never commit credentials). Generate migrations with **pnpm db:generate** and apply them with **pnpm db:migrate**. The Vercel function and Clerk proxy stay under **/api**.
 
-The included Vercel configuration builds the static studio only; it does not provision PostgreSQL or deploy the API. For cloud projects, deploy the API and database as well, with same-origin **/api** routing and the environment variables listed in **services/api** and **services/db**. Local scene generation, exports, and browser saves work independently.
+The repository can deploy API code with the studio, but it does not provision PostgreSQL or create the three required secrets. Cloud hosting and database-provider usage limits may apply. Local generation, exports, and browser saves work without the cloud service.
 
 ## Development
 

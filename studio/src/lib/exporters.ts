@@ -1,5 +1,5 @@
 import runtimeSource from "@/runtime/stylescape-runtime.js?raw";
-import { RUNTIME_VERSION, type Scene } from "@/runtime/stylescape-runtime.js";
+import { buildVectorSvg, RUNTIME_VERSION, type Scene } from "@/runtime/stylescape-runtime.js";
 
 export { runtimeSource };
 
@@ -10,6 +10,8 @@ export function slug(s: string) {
 export function sceneJSON(scene: Scene) {
   return JSON.stringify(scene, null, 2);
 }
+
+export const vectorSvg = buildVectorSvg;
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] as string);

@@ -53,6 +53,7 @@ export function defaultScene() {
     name: "Untitled field",
     seed: 1847,
     fieldMode: "curl",
+    layers: [],
     blend: "normal",
     params,
     palette: {
@@ -80,6 +81,30 @@ export function validateScene(input) {
   if (input.fieldMode !== undefined) {
     if (["curl", "orbit", "contour"].includes(input.fieldMode)) out.fieldMode = input.fieldMode;
     else errors.push("fieldMode must be curl, orbit, or contour.");
+  }
+  if (input.layers !== undefined) {
+    if (!Array.isArray(input.layers) || input.layers.length > 12) errors.push("layers must contain at most 12 vector layers.");
+    else {
+      const ids = new Set();
+      for (const layer of input.layers) {
+        if (!layer || typeof layer !== "object" || Array.isArray(layer) ||
+            typeof layer.id !== "string" || !/^[a-zA-Z0-9_-]{1,40}$/.test(layer.id) || ids.has(layer.id) ||
+            !["orbits", "contours", "grid"].includes(layer.kind) ||
+            typeof layer.visible !== "boolean" ||
+            typeof layer.opacity !== "number" || !Number.isFinite(layer.opacity) || layer.opacity < 0 || layer.opacity > 1 ||
+            !Number.isInteger(layer.colorIndex) || layer.colorIndex < 0 || layer.colorIndex > 4 ||
+            !Number.isInteger(layer.detail) || layer.detail < 4 || layer.detail > 48 ||
+            !["normal", "multiply", "additive"].includes(layer.blend)) {
+          errors.push("Each vector layer needs a unique id and supported bounded settings.");
+          continue;
+        }
+        ids.add(layer.id);
+        out.layers.push({
+          id: layer.id, kind: layer.kind, visible: layer.visible, opacity: layer.opacity,
+          colorIndex: layer.colorIndex, detail: layer.detail, blend: layer.blend,
+        });
+      }
+    }
   }
   if (input.seed !== undefined) {
     if (typeof input.seed === "number" && Number.isFinite(input.seed))
@@ -178,6 +203,146 @@ function makeNoise(rand) {
 function hexToRgb(h) {
   const n = parseInt(h.slice(1), 16);
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
+
+function layerRandom(seed, id) {
+  let hash = seed >>> 0;
+  for (let i = 0; i < id.length; i++) hash = Math.imul(hash ^ id.charCodeAt(i), 16777619);
+  return mulberry32(hash >>> 0);
+}
+
+function buildVectorLayerShapes(scene, width, height) {
+  const shapes = [];
+  for (const layer of scene.layers || []) {
+    if (!layer.visible || layer.opacity <= 0) continue;
+    const random = layerRandom(scene.seed, layer.id);
+    const base = {
+      color: scene.palette.colors[layer.colorIndex],
+      layerId: layer.id,
+      opacity: layer.opacity,
+      blend: layer.blend,
+      width: Math.max(0.6, Math.min(width, height) * 0.0011),
+    };
+    if (layer.kind === "orbits") {
+      const cx = width * (0.24 + random() * 0.52);
+      const cy = height * (0.2 + random() * 0.6);
+      const count = Math.min(layer.detail * 2, 72);
+      const maxRadius = Math.min(width, height) * (0.5 + random() * 0.4);
+      for (let i = 0; i < count; i++) {
+        shapes.push({ ...base, type: "circle", cx, cy, r: (i + 1) / count * maxRadius, dash: i % 3 === 0 ? "2 7" : "" });
+      }
+    } else if (layer.kind === "contours") {
+      const lines = Math.min(layer.detail, 24);
+      const segments = 60;
+      for (let line = 0; line < lines; line++) {
+        const phase = random() * Math.PI * 2;
+        const baseY = height * ((line + 0.5) / lines);
+        const points = [];
+        for (let i = 0; i <= segments; i++) {
+          const x = width * (i / segments);
+          const u = i / segments;
+          const wave = Math.sin(u * Math.PI * (2.1 + layer.detail * 0.08) + phase) * 0.029 +
+            Math.sin(u * Math.PI * (5.3 + line * 0.11) - phase * 1.7) * 0.011;
+          points.push([x, Math.max(0, Math.min(height, baseY + wave * height))]);
+        }
+        shapes.push({ ...base, type: "path", points, dash: line % 4 === 0 ? "5 9" : "" });
+      }
+    } else {
+      const count = Math.min(layer.detail, 36);
+      for (let i = 0; i <= count; i++) {
+        const x = width * i / count;
+        const y = height * i / count;
+        shapes.push({ ...base, type: "path", points: [[x, 0], [x, height]], dash: i % 5 === 0 ? "2 6" : "" });
+        shapes.push({ ...base, type: "path", points: [[0, y], [width, y]], dash: i % 5 === 0 ? "2 6" : "" });
+      }
+    }
+  }
+  return shapes;
+}
+
+function drawVectorLayers2D(ctx, scene, width, height) {
+  for (const shape of buildVectorLayerShapes(scene, width, height)) {
+    ctx.save();
+    ctx.globalAlpha = shape.opacity;
+    ctx.globalCompositeOperation = shape.blend === "multiply" ? "multiply" : shape.blend === "additive" ? "lighter" : "source-over";
+    ctx.strokeStyle = shape.color;
+    ctx.lineWidth = shape.width;
+    ctx.setLineDash(shape.dash ? shape.dash.split(" ").map(Number) : []);
+    if (shape.type === "circle") {
+      ctx.beginPath();
+      ctx.arc(shape.cx, shape.cy, shape.r, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      shape.points.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+export function vectorLayersMarkup(scene, width, height) {
+  const shapes = buildVectorLayerShapes(scene, width, height);
+  const groups = [];
+  for (const layer of scene.layers || []) {
+    if (!layer.visible || layer.opacity <= 0) continue;
+    const content = shapes.filter((shape) => shape.layerId === layer.id).map((shape) => {
+      const common = `fill="none" stroke="${shape.color}" stroke-opacity="${shape.opacity}" stroke-width="${shape.width}"` +
+        (shape.dash ? ` stroke-dasharray="${shape.dash}"` : "");
+      if (shape.type === "circle") return `<circle cx="${shape.cx}" cy="${shape.cy}" r="${shape.r}" ${common}/>`;
+      const d = shape.points.map(([x, y], index) => `${index ? "L" : "M"}${x.toFixed(2)} ${y.toFixed(2)}`).join(" ");
+      return `<path d="${d}" ${common}/>`;
+    }).join("");
+    const blend = layer.blend === "multiply" ? "multiply" : layer.blend === "additive" ? "plus-lighter" : "normal";
+    groups.push(`<g id="stylescape-layer-${layer.id}" style="mix-blend-mode:${blend}">${content}</g>`);
+  }
+  return `<g id="stylescape-vector-layers">${groups.join("")}</g>`;
+}
+
+export function vectorLayersSvg(scene, width, height) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" aria-hidden="true">${vectorLayersMarkup(scene, width, height)}</svg>`;
+}
+
+export function buildVectorSvg(scene, width = 1920, height = 1080) {
+  const aspect = width / height;
+  const geometry = buildGeometry(scene, aspect);
+  const colorAt = (value) => {
+    const p = clamp(value, 0, 1) * 4;
+    const index = Math.min(3, Math.floor(p));
+    const t = p - index;
+    const a = parseInt(scene.palette.colors[index].slice(1), 16);
+    const b = parseInt(scene.palette.colors[index + 1].slice(1), 16);
+    const channel = (shift) => Math.round(((a >> shift) & 255) * (1 - t) + ((b >> shift) & 255) * t).toString(16).padStart(2, "0");
+    return `#${channel(16)}${channel(8)}${channel(0)}`;
+  };
+  const title = scene.name.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[c]);
+  const paths = [];
+  for (let r = 0; r < geometry.ranges.length; r += 2) {
+    const start = geometry.ranges[r], end = start + geometry.ranges[r + 1];
+    const left = [], right = [];
+    let hue = 0, hueCount = 0;
+    for (let i = start; i < end; i++) {
+      const o = i * 6;
+      const x = ((geometry.data[o] / aspect) * 0.5 + 0.5) * width;
+      const y = (1 - (geometry.data[o + 1] * 0.5 + 0.5)) * height;
+      const point = `${x.toFixed(2)},${y.toFixed(2)}`;
+      const line = geometry.data[o + 2] < 0 ? left : right;
+      if (!line.length || line[line.length - 1] !== point) line.push(point);
+      hue += geometry.data[o + 4] + (geometry.data[o + 3] - 0.5) * 0.18;
+      hueCount++;
+    }
+    if (left.length < 3 || right.length < 3) continue;
+    const d = `M${left.join(" L")} L${right.reverse().join(" L")} Z`;
+    const blend = scene.blend === "multiply" ? "multiply" : scene.blend === "additive" ? "plus-lighter" : "normal";
+    paths.push(`<path d="${d}" fill="${colorAt(hue / Math.max(1, hueCount))}" fill-opacity="${scene.params.opacity}" style="mix-blend-mode:${blend}"/>`);
+  }
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="title">
+<title id="title">${title} — Style Scape procedural field</title>
+<rect width="${width}" height="${height}" fill="${scene.palette.background}"/>
+<g id="flow-ribbons">${paths.join("")}</g>
+${vectorLayersMarkup(scene, width, height)}
+</svg>`;
 }
 
 /**
@@ -528,6 +693,7 @@ function create2D(canvas) {
       }
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "source-over";
+      drawVectorLayers2D(ctx, scene, w, h);
     },
     dispose() {
       geom = null;
@@ -561,6 +727,32 @@ export function createStyleScape(canvas, sceneInput, options) {
   let disposed = false, raf = 0, t0 = performance.now(), frozenTime = 0;
   let aspect = 1, w = 1, h = 1, geomKey = "", geom = null;
   let lastBuildMs = 0;
+  let overlay = null;
+  let originalParentPosition = "";
+  let changedParentPosition = false;
+  function syncOverlay() {
+    if (!scene.layers?.length || !canvas.parentElement || renderer.kind === "canvas2d") {
+      if (overlay) overlay.remove();
+      overlay = null;
+      return;
+    }
+    const parent = canvas.parentElement;
+    if (!overlay) {
+      const position = typeof getComputedStyle === "function" ? getComputedStyle(parent).position : parent.style.position;
+      if (position === "static" || !position) {
+        originalParentPosition = parent.style.position;
+        parent.style.position = "relative";
+        changedParentPosition = true;
+      }
+      overlay = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      overlay.setAttribute("class", "stylescape-vector-layer");
+      overlay.setAttribute("aria-hidden", "true");
+      overlay.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1";
+      parent.insertBefore(overlay, canvas.nextSibling);
+    }
+    overlay.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    overlay.innerHTML = vectorLayersMarkup(scene, w, h);
+  }
 
   function measure() {
     const dpr = Math.min(opts.maxDpr, (typeof devicePixelRatio === "number" ? devicePixelRatio : 1) || 1);
@@ -581,6 +773,7 @@ export function createStyleScape(canvas, sceneInput, options) {
     w = cw;
     h = ch;
     aspect = w / h;
+    if (overlay) overlay.setAttribute("viewBox", `0 0 ${w} ${h}`);
   }
   function ensureGeometry() {
     const P = scene.params;
@@ -630,6 +823,7 @@ export function createStyleScape(canvas, sceneInput, options) {
   }
 
   measure();
+  syncOverlay();
   let ro = null;
   if (!opts.width && typeof ResizeObserver === "function") {
     ro = new ResizeObserver(() => {
@@ -652,6 +846,7 @@ export function createStyleScape(canvas, sceneInput, options) {
     stats,
     update(next) {
       scene = validateScene(next).scene;
+      syncOverlay();
       kick();
     },
     resize() {
@@ -668,6 +863,8 @@ export function createStyleScape(canvas, sceneInput, options) {
       if (raf) cancelAnimationFrame(raf);
       if (ro) ro.disconnect();
       if (typeof document !== "undefined") document.removeEventListener("visibilitychange", onVis);
+      if (overlay) overlay.remove();
+      if (changedParentPosition && canvas.parentElement) canvas.parentElement.style.position = originalParentPosition;
       renderer.dispose();
       geom = null;
     },
@@ -680,7 +877,10 @@ export function renderToDataURL(scene, width, height, renderer) {
   const m = LIMITS.maxCanvasEdge;
   c.width = Math.min(m, Math.max(1, Math.round(width)));
   c.height = Math.min(m, Math.max(1, Math.round(height)));
-  const inst = createStyleScape(c, scene, { animate: false, width: c.width, height: c.height, renderer: renderer || "auto" });
+  const inst = createStyleScape(c, scene, {
+    animate: false, width: c.width, height: c.height,
+    renderer: renderer || (scene.layers?.length ? "canvas2d" : "auto"),
+  });
   try {
     return inst.toDataURL("image/png");
   } finally {

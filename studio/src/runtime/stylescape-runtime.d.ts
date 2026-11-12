@@ -1,4 +1,14 @@
 export type BlendMode = "normal" | "additive" | "multiply";
+export type SceneLayerKind = "orbits" | "contours" | "grid";
+export interface SceneLayer {
+  id: string;
+  kind: SceneLayerKind;
+  visible: boolean;
+  opacity: number;
+  colorIndex: number;
+  detail: number;
+  blend: BlendMode;
+}
 export interface SceneParams {
   count: number; steps: number; stepLength: number; noiseScale: number; octaves: number;
   curl: number; warp: number; flowAngle: number; width: number; taper: number; opacity: number;
@@ -11,6 +21,7 @@ export interface Scene {
   name: string;
   seed: number;
   fieldMode: "curl" | "orbit" | "contour";
+  layers: SceneLayer[];
   blend: BlendMode;
   params: SceneParams;
   palette: { background: string; colors: string[] };
@@ -43,6 +54,10 @@ export const PARAM_SPEC: Record<ParamKey, { min: number; max: number; step: numb
 export const BLEND_MODES: BlendMode[];
 export function defaultScene(): Scene;
 export function validateScene(input: unknown): { ok: boolean; scene: Scene; errors: string[] };
+export function buildGeometry(scene: Scene, aspect: number): { data: Float32Array; vertexCount: number; ribbons: number; steps: number; ranges: number[] };
+export function vectorLayersMarkup(scene: Scene, width: number, height: number): string;
+export function vectorLayersSvg(scene: Scene, width: number, height: number): string;
+export function buildVectorSvg(scene: Scene, width?: number, height?: number): string;
 export function mulberry32(seed: number): () => number;
 export function createStyleScape(canvas: HTMLCanvasElement, scene: Scene, options?: StyleScapeOptions): StyleScapeInstance;
 export function renderToDataURL(scene: Scene, width: number, height: number, renderer?: "auto" | "webgl" | "canvas2d"): string;

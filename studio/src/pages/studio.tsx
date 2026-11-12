@@ -8,6 +8,7 @@ import { LOCK_GROUPS, PALETTES, PARAM_LABELS, PRESETS, variations, type LockGrou
 import { loadLibrary, persistLibrary, LIBRARY_LIMIT, type SavedScene } from "@/lib/storage";
 import { BLEND_MODES, PARAM_SPEC, renderToDataURL, validateScene, type ParamKey, type RenderStats, type Scene } from "@/runtime/stylescape-runtime.js";
 import { CloudLibrary } from "@/components/studio/cloud-library";
+import { LayerStack } from "@/components/studio/layer-stack";
 
 /* ---------------- history ---------------- */
 type H = { past: Scene[]; present: Scene; future: Scene[]; anchor: Scene | null };
@@ -487,6 +488,9 @@ export default function Studio() {
               {sec.group === "motion" && <p className="mt-1 text-[11px] text-muted-foreground">Animation pauses in hidden tabs and is disabled when the OS requests reduced motion. Set drift to 0 for a static render.</p>}
             </Section>
           ))}
+          <Section title="Vector layers" index="06">
+            <LayerStack layers={scene.layers} palette={scene.palette} onChange={(layers) => commit({ ...scene, layers })} onPreview={(layers) => preview({ ...scene, layers })} />
+          </Section>
         </aside>
       </div>
 

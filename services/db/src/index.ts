@@ -10,7 +10,17 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const poolMax = Number(process.env.DATABASE_POOL_MAX ?? 3);
+if (!Number.isInteger(poolMax) || poolMax < 1 || poolMax > 20) {
+  throw new Error("DATABASE_POOL_MAX must be an integer between 1 and 20.");
+}
+
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: poolMax,
+  idleTimeoutMillis: 10_000,
+  connectionTimeoutMillis: 5_000,
+});
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";

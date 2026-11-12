@@ -3,10 +3,10 @@ import { Check, Copy, Download, FileCode2, FileJson, Image as ImageIcon, Globe, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { angularComponent, dataURLToBlob, download, reactComponent, runtimeSource, sceneJSON, slug, standaloneHTML, vueComponent } from "@/lib/exporters";
+import { angularComponent, dataURLToBlob, download, reactComponent, runtimeSource, sceneJSON, slug, standaloneHTML, vectorSvg, vueComponent } from "@/lib/exporters";
 import { createStyleScape, LIMITS, RUNTIME_VERSION, renderToDataURL, type Scene, type StyleScapeInstance } from "@/runtime/stylescape-runtime.js";
 
-type Tab = "png" | "json" | "html" | "react" | "vue" | "angular" | "video";
+type Tab = "png" | "json" | "html" | "svg" | "react" | "vue" | "angular" | "video";
 const SIZES = [
   { id: "hd", label: "1920 x 1080", w: 1920, h: 1080 },
   { id: "qhd", label: "2560 x 1440", w: 2560, h: 1440 },
@@ -30,6 +30,7 @@ export function ExportDialog({ open, onOpenChange, scene }: { open: boolean; onO
     if (!open) return "";
     if (tab === "json") return sceneJSON(scene);
     if (tab === "html") return standaloneHTML(scene);
+    if (tab === "svg") return vectorSvg(scene);
     if (tab === "react") return reactComponent(scene);
     if (tab === "vue") return vueComponent(scene);
     if (tab === "angular") return angularComponent(scene);
@@ -84,7 +85,7 @@ export function ExportDialog({ open, onOpenChange, scene }: { open: boolean; onO
       stream = canvas.captureStream(30);
       const mime = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"].find((type) => MediaRecorder.isTypeSupported(type));
       if (!mime) throw new Error("This browser has no supported WebM encoder.");
-      renderer = createStyleScape(canvas, scene, { animate: true, maxDpr: 1, width: 1280, height: 720 });
+      renderer = createStyleScape(canvas, scene, { animate: true, maxDpr: 1, width: 1280, height: 720, renderer: scene.layers?.length ? "canvas2d" : "auto" });
       media = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6_000_000 });
       media.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
       media.onstop = () => {
@@ -117,6 +118,7 @@ export function ExportDialog({ open, onOpenChange, scene }: { open: boolean; onO
     try {
       if (tab === "json") download(`${name}.stylescape.json`, code, "application/json");
       if (tab === "html") download(`${name}.html`, code, "text/html");
+      if (tab === "svg") download(`${name}.svg`, code, "image/svg+xml;charset=utf-8");
       if (tab === "react") download("StyleScape.jsx", code, "text/javascript");
       if (tab === "vue") download("StyleScape.vue", code, "text/javascript");
       if (tab === "angular") download("stylescape.component.ts", code, "text/javascript");
@@ -140,6 +142,7 @@ export function ExportDialog({ open, onOpenChange, scene }: { open: boolean; onO
     { id: "png", label: "PNG", icon: ImageIcon, note: "Raster, rendered offscreen" },
     { id: "json", label: "Scene JSON", icon: FileJson, note: "Re-importable source of truth" },
     { id: "html", label: "Standalone HTML", icon: Globe, note: "Single file, runtime inlined" },
+    { id: "svg", label: "Editable SVG", icon: FileCode2, note: "Vector field and design layers" },
     { id: "react", label: "React embed", icon: FileCode2, note: "Component + runtime module" },
     { id: "vue", label: "Vue 3", icon: FileCode2, note: "Single-file component + runtime" },
     { id: "angular", label: "Angular", icon: FileCode2, note: "Standalone component + runtime" },
@@ -179,7 +182,7 @@ export function ExportDialog({ open, onOpenChange, scene }: { open: boolean; onO
             {tab === "video" ? (
               <div className="space-y-4">
                 <p className="text-sm">Record the live scene through this browser&apos;s canvas encoder. Your device renders the animation locally; no video service is used.</p>
-                <p className="text-xs text-muted-foreground">Six seconds · 1280 × 720 · 30 fps · WebM. Browser encoding and performance vary by device. This is not a lossless export.</p>
+                <p className="text-xs text-muted-foreground">Six seconds · 1280 × 720 · 30 fps · WebM. Browser encoding and performance vary by device. Layered scenes use the Canvas 2D renderer for capture.</p>
                 {recording ? (
                   <div className="flex items-center gap-3">
                     <div role="progressbar" aria-label="Recording" aria-valuenow={recordTime} aria-valuemin={0} aria-valuemax={6} className="h-2 flex-1 overflow-hidden rounded bg-muted"><div className="h-full bg-primary transition-[width]" style={{ width: `${Math.min(100, recordTime / 6 * 100)}%` }} /></div>
@@ -229,7 +232,7 @@ export function ExportDialog({ open, onOpenChange, scene }: { open: boolean; onO
                 <div className="flex flex-wrap gap-2">
                   <button data-testid="button-download-export" onClick={save} className="inline-flex items-center gap-2 rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98]">
                     <Download className="h-4 w-4" />
-                      Download {tab === "json" ? ".json" : tab === "html" ? ".html" : tab === "vue" ? "StyleScape.vue" : tab === "angular" ? "stylescape.component.ts" : "StyleScape.jsx"}
+                      Download {tab === "json" ? ".json" : tab === "html" ? ".html" : tab === "svg" ? `${name}.svg` : tab === "vue" ? "StyleScape.vue" : tab === "angular" ? "stylescape.component.ts" : "StyleScape.jsx"}
                   </button>
                   {(tab === "react" || tab === "vue" || tab === "angular") && (
                     <button
@@ -249,6 +252,7 @@ export function ExportDialog({ open, onOpenChange, scene }: { open: boolean; onO
                 <p className="text-xs text-muted-foreground">
                   {tab === "json" && "Import this file back into the studio from the top bar. Values are validated and clamped on import."}
                   {tab === "html" && "Opens offline in any modern browser. WebGL with Canvas2D fallback, pauses in hidden tabs, honours reduced motion."}
+                  {tab === "svg" && "Real editable vector paths for the flow ribbons and your ordered vector layers. GPU-only interference, grain, and vignette shading are omitted; use PNG for a pixel-matched render."}
                   {tab === "react" && "Requires React. Download stylescape-runtime.js beside the component; both use the same renderer as the studio."}
                   {tab === "vue" && "Requires Vue 3. Download stylescape-runtime.js beside the single-file component."}
                   {tab === "angular" && "Requires Angular. Import the standalone component into your app and download its runtime alongside it."}
