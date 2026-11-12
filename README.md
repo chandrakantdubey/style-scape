@@ -2,6 +2,8 @@
 
 A local-first procedural graphics studio. No AI services or inference: seeded mathematics generates every scene.
 
+The remaining release work is tracked in [ROADMAP.md](ROADMAP.md).
+
 ## Run
 
 Use Node.js 22 or newer and pnpm 10.

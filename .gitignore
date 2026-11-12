@@ -72,3 +72,7 @@ services/api/dist/
 # Generated standalone builds
 node_modules/
 services/api/dist/
+
+# Generated standalone builds
+node_modules/
+services/api/dist/
