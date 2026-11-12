@@ -10,6 +10,7 @@ export interface Scene {
   version: 2;
   name: string;
   seed: number;
+  fieldMode: "curl" | "orbit" | "contour";
   blend: BlendMode;
   params: SceneParams;
   palette: { background: string; colors: string[] };

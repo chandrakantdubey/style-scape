@@ -1,12 +1,12 @@
-import { useMemo, useState } from "react";
-import { Check, Copy, Download, FileCode2, FileJson, Image as ImageIcon, Globe } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Check, Copy, Download, FileCode2, FileJson, Image as ImageIcon, Globe, Film, Video, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { dataURLToBlob, download, reactComponent, runtimeSource, sceneJSON, slug, standaloneHTML } from "@/lib/exporters";
-import { LIMITS, RUNTIME_VERSION, renderToDataURL, type Scene } from "@/runtime/stylescape-runtime.js";
+import { angularComponent, dataURLToBlob, download, reactComponent, runtimeSource, sceneJSON, slug, standaloneHTML, vueComponent } from "@/lib/exporters";
+import { createStyleScape, LIMITS, RUNTIME_VERSION, renderToDataURL, type Scene, type StyleScapeInstance } from "@/runtime/stylescape-runtime.js";
 
-type Tab = "png" | "json" | "html" | "react";
+type Tab = "png" | "json" | "html" | "react" | "vue" | "angular" | "video";
 const SIZES = [
   { id: "hd", label: "1920 x 1080", w: 1920, h: 1080 },
   { id: "qhd", label: "2560 x 1440", w: 2560, h: 1440 },
@@ -20,6 +20,9 @@ export function ExportDialog({ open, onOpenChange, scene }: { open: boolean; onO
   const [size, setSize] = useState("hd");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordTime, setRecordTime] = useState(0);
+  const cancelRecording = useRef<(() => void) | null>(null);
   const { toast } = useToast();
   const name = slug(scene.name);
 
@@ -28,6 +31,8 @@ export function ExportDialog({ open, onOpenChange, scene }: { open: boolean; onO
     if (tab === "json") return sceneJSON(scene);
     if (tab === "html") return standaloneHTML(scene);
     if (tab === "react") return reactComponent(scene);
+    if (tab === "vue") return vueComponent(scene);
+    if (tab === "angular") return angularComponent(scene);
     return "";
   }, [tab, scene, open]);
 
@@ -50,11 +55,71 @@ export function ExportDialog({ open, onOpenChange, scene }: { open: boolean; onO
     }
   }
 
+  async function recordVideo() {
+    if (!("MediaRecorder" in window) || !HTMLCanvasElement.prototype.captureStream) {
+      fail("WebM export", new Error("This browser does not support canvas recording."));
+      return;
+    }
+    if (recording) return;
+    let renderer: StyleScapeInstance | null = null;
+    let media: MediaRecorder | null = null;
+    let stream: MediaStream | null = null;
+    let timer = 0;
+    let chunks: Blob[] = [];
+    let shouldDownload = true;
+    const canvas = document.createElement("canvas");
+    canvas.width = 1280;
+    canvas.height = 720;
+    const close = () => {
+      window.clearInterval(timer);
+      if (media && media.state !== "inactive") media.stop();
+      renderer?.dispose();
+      renderer = null;
+      stream?.getTracks().forEach((track) => track.stop());
+      cancelRecording.current = null;
+      setRecording(false);
+    };
+    cancelRecording.current = () => { shouldDownload = false; close(); };
+    try {
+      stream = canvas.captureStream(30);
+      const mime = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"].find((type) => MediaRecorder.isTypeSupported(type));
+      if (!mime) throw new Error("This browser has no supported WebM encoder.");
+      renderer = createStyleScape(canvas, scene, { animate: true, maxDpr: 1, width: 1280, height: 720 });
+      media = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6_000_000 });
+      media.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
+      media.onstop = () => {
+        if (shouldDownload && chunks.length) {
+          download(`${name}-6s-1280x720.webm`, new Blob(chunks, { type: mime }));
+          toast({ title: "Animation exported", description: "6 seconds · 1280 × 720 · WebM" });
+        }
+        chunks = [];
+      };
+      media.onerror = () => {
+        shouldDownload = false;
+        fail("WebM export", new Error("The browser stopped recording unexpectedly."));
+        close();
+      };
+      setRecording(true);
+      setRecordTime(0);
+      timer = window.setInterval(() => setRecordTime((previous) => {
+        if (previous >= 5) { close(); return 6; }
+        return previous + 1;
+      }), 1000);
+      media.start(200);
+    } catch (error) {
+      shouldDownload = false;
+      close();
+      fail("WebM export", error);
+    }
+  }
+
   function save() {
     try {
       if (tab === "json") download(`${name}.stylescape.json`, code, "application/json");
       if (tab === "html") download(`${name}.html`, code, "text/html");
       if (tab === "react") download("StyleScape.jsx", code, "text/javascript");
+      if (tab === "vue") download("StyleScape.vue", code, "text/javascript");
+      if (tab === "angular") download("stylescape.component.ts", code, "text/javascript");
       toast({ title: "Download started" });
     } catch (e) {
       fail("Download", e);
@@ -76,6 +141,9 @@ export function ExportDialog({ open, onOpenChange, scene }: { open: boolean; onO
     { id: "json", label: "Scene JSON", icon: FileJson, note: "Re-importable source of truth" },
     { id: "html", label: "Standalone HTML", icon: Globe, note: "Single file, runtime inlined" },
     { id: "react", label: "React embed", icon: FileCode2, note: "Component + runtime module" },
+    { id: "vue", label: "Vue 3", icon: FileCode2, note: "Single-file component + runtime" },
+    { id: "angular", label: "Angular", icon: FileCode2, note: "Standalone component + runtime" },
+    { id: "video", label: "WebM", icon: Film, note: "Record a six-second animated preview" },
   ];
 
   return (
@@ -108,7 +176,19 @@ export function ExportDialog({ open, onOpenChange, scene }: { open: boolean; onO
             ))}
           </nav>
           <div className="min-w-0 p-5">
-            {tab === "png" ? (
+            {tab === "video" ? (
+              <div className="space-y-4">
+                <p className="text-sm">Record the live scene through this browser&apos;s canvas encoder. Your device renders the animation locally; no video service is used.</p>
+                <p className="text-xs text-muted-foreground">Six seconds · 1280 × 720 · 30 fps · WebM. Browser encoding and performance vary by device. This is not a lossless export.</p>
+                {recording ? (
+                  <div className="flex items-center gap-3">
+                    <div role="progressbar" aria-label="Recording" aria-valuenow={recordTime} aria-valuemin={0} aria-valuemax={6} className="h-2 flex-1 overflow-hidden rounded bg-muted"><div className="h-full bg-primary transition-[width]" style={{ width: `${Math.min(100, recordTime / 6 * 100)}%` }} /></div>
+                    <span className="font-mono text-xs">{recordTime}/6s</span>
+                    <button onClick={() => cancelRecording.current?.()} className="inline-flex items-center gap-1 rounded border px-3 py-1.5 text-xs"><X className="h-3.5 w-3.5" />Cancel</button>
+                  </div>
+                ) : <button onClick={() => void recordVideo()} className="inline-flex items-center gap-2 rounded-sm bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"><Video className="h-4 w-4" />Record WebM</button>}
+              </div>
+            ) : tab === "png" ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {SIZES.map((s) => (
@@ -149,9 +229,9 @@ export function ExportDialog({ open, onOpenChange, scene }: { open: boolean; onO
                 <div className="flex flex-wrap gap-2">
                   <button data-testid="button-download-export" onClick={save} className="inline-flex items-center gap-2 rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98]">
                     <Download className="h-4 w-4" />
-                    Download {tab === "json" ? ".json" : tab === "html" ? ".html" : "StyleScape.jsx"}
+                      Download {tab === "json" ? ".json" : tab === "html" ? ".html" : tab === "vue" ? "StyleScape.vue" : tab === "angular" ? "stylescape.component.ts" : "StyleScape.jsx"}
                   </button>
-                  {tab === "react" && (
+                  {(tab === "react" || tab === "vue" || tab === "angular") && (
                     <button
                       data-testid="button-download-runtime"
                       onClick={() => download("stylescape-runtime.js", runtimeSource, "text/javascript")}
@@ -169,7 +249,9 @@ export function ExportDialog({ open, onOpenChange, scene }: { open: boolean; onO
                 <p className="text-xs text-muted-foreground">
                   {tab === "json" && "Import this file back into the studio from the top bar. Values are validated and clamped on import."}
                   {tab === "html" && "Opens offline in any modern browser. WebGL with Canvas2D fallback, pauses in hidden tabs, honours reduced motion."}
-                  {tab === "react" && "Zero dependencies besides React. The runtime is plain ES module JavaScript, identical to the one powering this studio."}
+                  {tab === "react" && "Requires React. Download stylescape-runtime.js beside the component; both use the same renderer as the studio."}
+                  {tab === "vue" && "Requires Vue 3. Download stylescape-runtime.js beside the single-file component."}
+                  {tab === "angular" && "Requires Angular. Import the standalone component into your app and download its runtime alongside it."}
                 </p>
               </div>
             )}

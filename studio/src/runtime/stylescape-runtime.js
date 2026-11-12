@@ -52,6 +52,7 @@ export function defaultScene() {
     version: SCENE_VERSION,
     name: "Untitled field",
     seed: 1847,
+    fieldMode: "curl",
     blend: "normal",
     params,
     palette: {
@@ -76,6 +77,10 @@ export function validateScene(input) {
   if (input.version !== undefined && input.version !== SCENE_VERSION)
     errors.push("Unsupported version " + String(input.version) + " (expected " + SCENE_VERSION + ").");
   if (typeof input.name === "string") out.name = input.name.slice(0, 80);
+  if (input.fieldMode !== undefined) {
+    if (["curl", "orbit", "contour"].includes(input.fieldMode)) out.fieldMode = input.fieldMode;
+    else errors.push("fieldMode must be curl, orbit, or contour.");
+  }
   if (input.seed !== undefined) {
     if (typeof input.seed === "number" && Number.isFinite(input.seed))
       out.seed = Math.floor(Math.abs(input.seed)) % 2147483647;
@@ -184,6 +189,14 @@ export function buildGeometry(scene, aspect) {
   const rand = mulberry32(scene.seed + 1);
   const noise = makeNoise(rand);
   const noise2 = makeNoise(mulberry32(scene.seed * 7 + 13));
+  const vortices = [];
+  const vortexRand = mulberry32(scene.seed * 19 + 31);
+  for (let i = 0; i < 4; i++) vortices.push({
+    x: (vortexRand() * 2 - 1) * aspect * 0.82,
+    y: (vortexRand() * 2 - 1) * 0.78,
+    spin: vortexRand() < 0.5 ? -1 : 1,
+    strength: 0.2 + vortexRand() * 0.8,
+  });
   const count = Math.round(clamp(P.count, LIMITS.count[0], LIMITS.count[1]));
   let steps = Math.round(clamp(P.steps, LIMITS.steps[0], LIMITS.steps[1]));
   // bound allocation: (steps*2 + 2) verts per ribbon
@@ -206,6 +219,30 @@ export function buildGeometry(scene, aspect) {
       norm += amp;
       amp *= 0.5;
       f *= 2;
+    }
+    const scalar = (px, py) => {
+      let sum = 0, weight = 1, freq = fs, total = 0;
+      for (let o = 0; o < oct; o++) {
+        sum += weight * noise(px * freq + o * 31.7, py * freq - o * 17.3);
+        total += weight; weight *= 0.5; freq *= 2;
+      }
+      return sum / total;
+    };
+    if (scene.fieldMode === "orbit") {
+      let vx = 0, vy = 0;
+      for (const center of vortices) {
+        const dx = wx - center.x, dy = wy - center.y;
+        const d2 = dx * dx + dy * dy + 0.018;
+        const k = center.spin * center.strength / d2;
+        vx -= dy * k; vy += dx * k;
+      }
+      return Math.atan2(vy, vx) + P.flowAngle * 0.25;
+    }
+    if (scene.fieldMode === "contour") {
+      const e = 0.015;
+      const gx = scalar(wx + e, wy) - scalar(wx - e, wy);
+      const gy = scalar(wx, wy + e) - scalar(wx, wy - e);
+      return Math.atan2(gy, gx) + Math.PI * 0.5 + P.flowAngle * 0.25;
     }
     return (a / norm) * Math.PI * 2 * P.curl + P.flowAngle;
   };

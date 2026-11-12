@@ -56,6 +56,11 @@ export function variations(base: Scene, locks: Set<LockGroup>, amount: number, n
     const r = mulberry32((base.seed * 31 + salt * 977 + i * 7919) >>> 0);
     const s: Scene = structuredClone(base);
     if (!locks.has("seed")) s.seed = Math.floor(r() * 999999) + 1;
+    if (!locks.has("field")) {
+      const modes: Scene["fieldMode"][] = ["curl", "orbit", "contour"];
+      const alternatives = modes.filter((mode) => mode !== base.fieldMode);
+      if (r() < 0.22) s.fieldMode = alternatives[Math.floor(r() * alternatives.length)];
+    }
     for (const g of LOCK_GROUPS) {
       if (locks.has(g.id)) continue;
       for (const k of g.keys) {

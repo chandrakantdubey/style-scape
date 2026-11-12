@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
-import { Dices, Download, FolderOpen, Redo2, Save, Shuffle, Trash2, Undo2, Upload, ChevronLeft, ChevronRight, Sparkles, Cpu } from "lucide-react";
+import { Dices, Download, FolderOpen, Redo2, Save, Shuffle, Trash2, Undo2, Upload, ChevronLeft, ChevronRight, Sparkles, Cpu, Cloud } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { ParamSlider, Section, StageCanvas, Swatches } from "@/components/studio/controls";
@@ -7,6 +7,7 @@ import { ExportDialog } from "@/components/studio/export-dialog";
 import { LOCK_GROUPS, PALETTES, PARAM_LABELS, PRESETS, variations, type LockGroup } from "@/lib/scenes";
 import { loadLibrary, persistLibrary, LIBRARY_LIMIT, type SavedScene } from "@/lib/storage";
 import { BLEND_MODES, PARAM_SPEC, renderToDataURL, validateScene, type ParamKey, type RenderStats, type Scene } from "@/runtime/stylescape-runtime.js";
+import { CloudLibrary } from "@/components/studio/cloud-library";
 
 /* ---------------- history ---------------- */
 type H = { past: Scene[]; present: Scene; future: Scene[]; anchor: Scene | null };
@@ -56,6 +57,10 @@ export default function Studio() {
   const [leftTab, setLeftTab] = useState<"presets" | "library">("presets");
   const [exportOpen, setExportOpen] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [cloudOpen, setCloudOpen] = useState(false);
+  const [cloudSelected, setCloudSelected] = useState<{ id: string; revision: number } | null>(null);
+  const [frameRatio, setFrameRatio] = useState("16 / 9");
+  const [contentGuides, setContentGuides] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const reportedFallback = useRef(false);
 
@@ -63,6 +68,14 @@ export default function Studio() {
     const r = loadLibrary();
     setLibrary(r.items);
     if (r.error) toast({ variant: "destructive", title: "Library", description: r.error });
+    try {
+      const incoming = sessionStorage.getItem("stylescape.v2.shared-import");
+      if (incoming) {
+        sessionStorage.removeItem("stylescape.v2.shared-import");
+        const parsed = validateScene(JSON.parse(incoming));
+        if (parsed.ok) dispatch({ t: "commit", s: parsed.scene });
+      }
+    } catch { sessionStorage.removeItem("stylescape.v2.shared-import"); }
   }, [toast]);
 
   const commit = useCallback((s: Scene) => dispatch({ t: "commit", s }), []);
@@ -232,6 +245,7 @@ export default function Studio() {
           aria-label="Scene name"
         />
         <div className="ml-auto flex items-center gap-1">
+          <button data-testid="button-cloud" onClick={() => setCloudOpen(true)} className="inline-flex items-center gap-1.5 rounded-sm border border-foreground/30 px-2.5 py-1.5 text-xs font-semibold transition-all hover:bg-foreground hover:text-background"><Cloud className="h-3.5 w-3.5" />Cloud</button>
           <IconBtn label="Undo (Ctrl+Z)" testid="button-undo" disabled={!h.past.length} onClick={() => dispatch({ t: "undo" })}><Undo2 className="h-4 w-4" /></IconBtn>
           <IconBtn label="Redo (Ctrl+Shift+Z)" testid="button-redo" disabled={!h.future.length} onClick={() => dispatch({ t: "redo" })}><Redo2 className="h-4 w-4" /></IconBtn>
           <span className="mx-1 hidden font-mono text-[10px] text-muted-foreground sm:inline">{h.past.length}/{h.future.length}</span>
@@ -312,7 +326,7 @@ export default function Studio() {
 
         {/* stage */}
         <main className="grid-paper order-1 flex min-h-0 flex-col gap-3 p-3 lg:order-2 lg:p-5">
-          <div className="relative aspect-[4/3] min-h-0 overflow-hidden rounded-[6px] bg-foreground shadow-[0_0_0_1px_hsl(var(--foreground)),0_18px_40px_-18px_hsl(var(--foreground)/0.6)] lg:aspect-auto lg:flex-1">
+          <div className="relative min-h-0 w-full max-h-[64dvh] overflow-hidden rounded-[6px] bg-foreground shadow-[0_0_0_1px_hsl(var(--foreground)),0_18px_40px_-18px_hsl(var(--foreground)/0.6)]" style={{ aspectRatio: frameRatio }}>
             <StageCanvas
               scene={scene}
               onStats={(s) => {
@@ -324,6 +338,21 @@ export default function Studio() {
               }}
               onError={(m) => toast({ variant: "destructive", title: "Renderer", description: m })}
             />
+            {contentGuides && <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/10">
+              <div className="absolute inset-[9%] rounded border border-dashed border-white/45" />
+              <div className="rounded bg-black/35 px-5 py-3 text-center text-white shadow-lg backdrop-blur-sm">
+                <span className="block font-mono text-[9px] uppercase tracking-[0.2em] text-white/70">Website content preview</span>
+                <span className="mt-1 block text-2xl font-semibold">Your story, in focus.</span>
+                <span className="mt-1 block text-xs text-white/75">Quiet-zone overlay · excluded from exports</span>
+              </div>
+            </div>}
+            <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded border border-white/15 bg-black/55 p-1 backdrop-blur">
+              <label htmlFor="frame-ratio" className="sr-only">Preview aspect ratio</label>
+              <select id="frame-ratio" aria-label="Preview aspect ratio" value={frameRatio} onChange={(e) => setFrameRatio(e.target.value)} className="rounded bg-transparent px-1.5 py-1 font-mono text-[10px] text-white outline-none">
+                <option className="text-foreground" value="16 / 9">16:9</option><option className="text-foreground" value="4 / 3">4:3</option><option className="text-foreground" value="1 / 1">1:1</option><option className="text-foreground" value="9 / 16">9:16</option>
+              </select>
+              <button data-testid="toggle-content-guides" aria-pressed={contentGuides} onClick={() => setContentGuides((value) => !value)} className="rounded px-2 py-1 text-[10px] text-white hover:bg-white/15">{contentGuides ? "Hide text guide" : "Preview text space"}</button>
+            </div>
             <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3">
               <div className="pointer-events-auto flex items-center gap-1 rounded-sm bg-[hsl(232_36%_8%/0.72)] p-1 text-[hsl(40_30%_94%)] backdrop-blur">
                 <button data-testid="button-seed-prev" aria-label="Previous seed" onClick={() => reseed(-1)} className="rounded-sm p-1.5 hover:bg-white/10"><ChevronLeft className="h-3.5 w-3.5" /></button>
@@ -398,6 +427,28 @@ export default function Studio() {
 
         {/* inspector */}
         <aside className="ss-scroll order-2 min-h-0 overflow-y-auto border-foreground/15 bg-card lg:order-3 lg:border-l">
+          <Section title="Vector field" index="00" locked={locks.has("field")} onToggleLock={() => toggleLock("field")}>
+            <p className="mb-2 text-[11px] text-muted-foreground">Pick the equation that moves the seeded ribbon paths.</p>
+            <div role="group" aria-label="Vector field mode" className="grid grid-cols-3 gap-1">
+              {([
+                ["curl", "Curl", "Warped noise field"],
+                ["orbit", "Vortices", "Four interacting sinks"],
+                ["contour", "Isolines", "Follow noise contours"],
+              ] as const).map(([mode, label, hint]) => (
+                <button
+                  key={mode}
+                  data-testid={`button-field-${mode}`}
+                  aria-pressed={scene.fieldMode === mode}
+                  title={hint}
+                  onClick={() => commit({ ...scene, fieldMode: mode })}
+                  className={cn("rounded-sm border px-1.5 py-2 text-center transition-colors", scene.fieldMode === mode ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-foreground/40")}
+                >
+                  <span className="block text-[11px] font-semibold">{label}</span>
+                  <span className="mt-0.5 block text-[9px]">{hint}</span>
+                </button>
+              ))}
+            </div>
+          </Section>
           {SECTIONS.slice(0, 2).map((sec) => (
             <Section key={sec.group} title={sec.title} index={sec.idx} locked={locks.has(sec.group)} onToggleLock={() => toggleLock(sec.group)}>
               {LOCK_GROUPS.find((g) => g.id === sec.group)!.keys.map(slider)}
@@ -440,6 +491,14 @@ export default function Studio() {
       </div>
 
       <ExportDialog open={exportOpen} onOpenChange={setExportOpen} scene={scene} />
+      <CloudLibrary
+        open={cloudOpen}
+        onClose={() => setCloudOpen(false)}
+        scene={scene}
+        selected={cloudSelected}
+        onSelected={setCloudSelected}
+        onOpenScene={(next, id, revision) => { commit(next); setCloudSelected({ id, revision }); }}
+      />
     </div>
   );
 }

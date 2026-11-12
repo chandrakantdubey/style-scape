@@ -1,0 +1,163 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+paths:
+  /projects:
+    get:
+      operationId: listProjects
+      responses:
+        "200":
+          description: Current user's projects
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Project" } }
+    post:
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+  /projects/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      operationId: updateProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectUpdate" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+        "409":
+          description: Revision conflict; reload before overwriting
+    delete:
+      operationId: deleteProject
+      responses:
+        "204": { description: Deleted }
+  /projects/{id}/revisions:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: listRevisions
+      responses:
+        "200":
+          description: Latest 30 immutable revisions
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/ProjectRevision" } }
+  /projects/{id}/publish:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: publishProject
+      responses:
+        "200":
+          description: Publish current revision; previous link is revoked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+    delete:
+      operationId: unpublishProject
+      responses:
+        "200":
+          description: Public access revoked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+  /published/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getPublishedScene
+      responses:
+        "200":
+          description: Public immutable snapshot; no owner identity returned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublishedScene" }
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+components:
+  schemas:
+    SceneDocument:
+      type: object
+      additionalProperties: true
+    ProjectInput:
+      type: object
+      required: [title, scene]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 100 }
+        scene: { $ref: "#/components/schemas/SceneDocument" }
+    ProjectUpdate:
+      type: object
+      required: [title, scene, expectedRevision]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 100 }
+        scene: { $ref: "#/components/schemas/SceneDocument" }
+        expectedRevision: { type: integer, minimum: 1 }
+    Project:
+      type: object
+      required: [id, title, scene, revision, updatedAt, publishedId]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        scene: { $ref: "#/components/schemas/SceneDocument" }
+        revision: { type: integer }
+        updatedAt: { type: string }
+        publishedId: { type: [string, "null"] }
+    ProjectRevision:
+      type: object
+      required: [revision, title, scene, createdAt]
+      properties:
+        revision: { type: integer }
+        title: { type: string }
+        scene: { $ref: "#/components/schemas/SceneDocument" }
+        createdAt: { type: string }
+    PublishedScene:
+      type: object
+      required: [id, title, scene, revision]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        scene: { $ref: "#/components/schemas/SceneDocument" }
+        revision: { type: integer }
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
